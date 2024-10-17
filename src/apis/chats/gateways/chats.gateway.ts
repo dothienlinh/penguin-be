@@ -76,7 +76,7 @@ export class ChatsGateway
       if (offlineMessages.length > 0) {
         client.emit('offlineMessages', offlineMessages);
         await this.offlineMessagesService.markAsDelivered(
-          offlineMessages.map((msg) => msg._id.toString()),
+          offlineMessages.map((msg) => msg.id),
         );
       }
     } catch (error) {
@@ -138,6 +138,24 @@ export class ChatsGateway
         this.logger.error(`Error in handleSendMessage: ${error.message}`);
         client.emit('error', { message: 'Failed to send message' });
       }
+    }
+  }
+
+  @SubscribeMessage('typing')
+  handleTyping(@MessageBody() data: { userId: number; chatRoomId: number }) {
+    this.server.to(`room_${data.chatRoomId}`).emit('userTyping', data.userId);
+  }
+
+  @SubscribeMessage('read')
+  async handleRead(@MessageBody() data: { userId: number; messageId: number }) {
+    try {
+      const message = await this.messagesService.markAsRead(data.messageId);
+      this.server.to(`room_${message.chatRoom.id}`).emit('messageRead', {
+        messageId: message.id,
+        userId: data.userId,
+      });
+    } catch (error) {
+      this.handleError(error, 'Mark message as read failed');
     }
   }
 }

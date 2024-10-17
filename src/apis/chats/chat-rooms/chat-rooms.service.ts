@@ -1,8 +1,8 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateChatRoomDto } from './dto/create-chat-room.dto';
-import { ChatRoom } from './schemas/chat-room.schema';
+import { ChatRoom } from './entities/chat-room.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { ObjectId, Repository } from 'typeorm';
+import { Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { UsersService } from '@apis/users/users.service';
 import { UpdateNameChatRoomDto } from './dto/update-name-chat-room.dto';
@@ -54,28 +54,61 @@ export class ChatRoomsService {
     }
   }
 
-  async findOne(id: ObjectId) {
+  async findOne(id: number) {
     try {
-      const chatRoom = await this.chatRoomsRepository.findOneBy({ _id: id });
+      const chatRoom = await this.chatRoomsRepository.findOneBy({ id: id });
+      if (!chatRoom) {
+        throw new NotFoundException('Chat room not found');
+      }
       return plainToInstance(ChatRoom, chatRoom);
     } catch (error) {
       this.handleError(error, 'Get chat room failed');
     }
   }
 
-  async updateName(id: ObjectId, updateNameChatRoomDto: UpdateNameChatRoomDto) {
+  async findChatRoomRelations(id: number) {
     try {
-      await this.chatRoomsRepository.update({ _id: id }, updateNameChatRoomDto);
+      const chatRoom = await this.chatRoomsRepository.findOne({
+        where: { id: id },
+        relations: ['members', 'messages'],
+      });
+
+      if (!chatRoom) {
+        throw new NotFoundException('Chat room not found');
+      }
+
+      return chatRoom;
+    } catch (error) {
+      this.handleError(error, 'Get chat room failed');
+    }
+  }
+
+  async updateName(id: number, updateNameChatRoomDto: UpdateNameChatRoomDto) {
+    try {
+      await this.chatRoomsRepository.update({ id: id }, updateNameChatRoomDto);
+      return plainToInstance(ChatRoom, await this.findOne(id));
     } catch (error) {
       this.handleError(error, 'Update chat room name failed');
     }
   }
 
-  async remove(id: ObjectId) {
+  async remove(id: number) {
     try {
-      await this.chatRoomsRepository.softDelete({ _id: id });
+      const chatRoom = await this.findChatRoomRelations(id);
+      await this.chatRoomsRepository.softRemove(chatRoom);
+      return { success: true };
     } catch (error) {
       this.handleError(error, 'Delete chat room failed');
+    }
+  }
+
+  async restore(id: number) {
+    try {
+      const chatRoom = await this.findChatRoomRelations(id);
+      await this.chatRoomsRepository.recover(chatRoom);
+      return this.findOne(id);
+    } catch (error) {
+      this.handleError(error, 'Restore chat room failed');
     }
   }
 }

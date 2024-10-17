@@ -7,10 +7,11 @@ import { ChatRoomsService } from './chat-rooms/chat-rooms.service';
 import { MessagesService } from './messages/messages.service';
 import { UsersModule } from '@apis/users/users.module';
 import { TypeOrmModule } from '@nestjs/typeorm';
-import { ChatRoom } from './chat-rooms/schemas/chat-room.schema';
-import { Message } from './messages/schemas/message.schema';
+import { ChatRoom } from './chat-rooms/entities/chat-room.entity';
+import { Message } from './messages/entities/message.entity';
 import { OfflineMessagesService } from './services/offlineMessages.service';
 import { RedisModule } from '@libs/configs/redis/redis.module';
+import { ChatHistoryService } from './services/chat-history.service';
 
 @Module({
   imports: [
@@ -25,6 +26,7 @@ import { RedisModule } from '@libs/configs/redis/redis.module';
     ChatRoomsService,
     MessagesService,
     OfflineMessagesService,
+    ChatHistoryService,
   ],
 })
 export class ChatsModule {}

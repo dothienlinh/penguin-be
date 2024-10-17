@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
-import { Message } from '../messages/schemas/message.schema';
+import { Message } from '../messages/entities/message.entity';
 import { CreateMessageDto } from '../messages/dto/create-message.dto';
 
 @Injectable()
@@ -21,14 +21,15 @@ export class OfflineMessagesService {
 
   async getOfflineMessages(userId: number): Promise<Message[]> {
     return this.messageRepository.find({
-      where: { receiverId: userId, isDelivered: false },
+      where: { receiver: { id: userId }, isDelivered: false },
     });
   }
 
-  async markAsDelivered(messageIds: string[]): Promise<void> {
-    await this.messageRepository.update(
-      { _id: { $in: messageIds } as any },
-      { isDelivered: true },
-    );
+  async markAsDelivered(messageIds: number[]): Promise<void> {
+    await this.messageRepository.update(messageIds, { isDelivered: true });
+  }
+
+  async deleteDeliveredMessages(messageIds: number[]): Promise<void> {
+    await this.messageRepository.delete(messageIds);
   }
 }

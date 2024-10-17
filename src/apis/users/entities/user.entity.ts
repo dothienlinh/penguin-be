@@ -1,3 +1,5 @@
+import { ChatRoom } from '@apis/chats/chat-rooms/entities/chat-room.entity';
+import { Message } from '@apis/chats/messages/entities/message.entity';
 import { Comment } from '@apis/comments/entities/comment.entity';
 import { Like } from '@apis/likes/entities/like.entity';
 import { Post } from '@apis/posts/entities/post.entity';
@@ -5,7 +7,7 @@ import { Share } from '@apis/shares/entities/share.entity';
 import { BaseEntity } from '@libs/base/base.entity';
 import { Gender, Provider, Roles } from '@libs/enums';
 import { Exclude } from 'class-transformer';
-import { Entity, Column, ManyToMany, JoinTable, OneToMany } from 'typeorm';
+import { Column, Entity, JoinTable, ManyToMany, OneToMany } from 'typeorm';
 
 @Entity()
 export class User extends BaseEntity {
@@ -90,6 +92,12 @@ export class User extends BaseEntity {
   })
   shares: Share[];
 
+  @OneToMany(() => Message, (message) => message.sender)
+  sentMessages: Message[];
+
+  @OneToMany(() => Message, (message) => message.receiver)
+  receivedMessages: Message[];
+
   @ManyToMany(() => User, (user) => user.followers)
   @JoinTable({
     name: 'user_follows',
@@ -100,4 +108,12 @@ export class User extends BaseEntity {
 
   @ManyToMany(() => User, (user) => user.following)
   followers: User[];
+
+  @ManyToMany(() => ChatRoom, (chatRoom) => chatRoom.members)
+  @JoinTable({
+    name: 'chat_room_members',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'chat_room_id', referencedColumnName: 'id' },
+  })
+  chatRooms: ChatRoom[];
 }

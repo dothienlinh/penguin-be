@@ -1,5 +1,4 @@
-import { IsMongoId, IsNotEmpty, IsNumber, IsString } from 'class-validator';
-import { ObjectId } from 'typeorm';
+import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreateMessageDto {
   @IsString()
@@ -14,7 +13,7 @@ export class CreateMessageDto {
   @IsNotEmpty()
   senderId: number;
 
+  @IsNumber()
   @IsNotEmpty()
-  @IsMongoId()
-  chatRoomId: ObjectId;
+  chatRoomId: number;
 }
