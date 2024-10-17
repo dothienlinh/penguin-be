@@ -171,4 +171,42 @@ export class PostsController {
   ) {
     return await this.postsService.removeComment(+id, +commentId, user);
   }
+
+  @Post(':id/share')
+  @ApiOperation({ summary: 'Share a post' })
+  async sharePost(@Param('id') id: string, @CurrentUser() user: User) {
+    return await this.postsService.sharePost(user, +id);
+  }
+
+  @Delete(':id/shares/:shareId')
+  @ApiOperation({ summary: 'Soft delete a share' })
+  async unsharePost(
+    @Param('id') id: string,
+    @Param('shareId') shareId: string,
+    @CurrentUser() user: User,
+  ) {
+    return await this.postsService.unsharePost(user, +id, +shareId);
+  }
+
+  @Post(':id/shares/:shareId/restore')
+  @ApiOperation({ summary: 'Restore a soft deleted share' })
+  async restoreShare(
+    @Param('id') id: string,
+    @Param('shareId') shareId: string,
+    @CurrentUser() user: User,
+  ) {
+    return await this.postsService.restoreShare(user, +id, +shareId);
+  }
+
+  @Get('shared')
+  @ApiOperation({ summary: 'Get shared posts' })
+  async getSharedPosts(@CurrentUser() user: User) {
+    return await this.postsService.getSharedPosts(user);
+  }
+
+  @Get(':id/shares')
+  @ApiOperation({ summary: 'Get post shares' })
+  async getPostShares(@Param('id') id: string) {
+    return await this.postsService.getPostShares(+id);
+  }
 }
