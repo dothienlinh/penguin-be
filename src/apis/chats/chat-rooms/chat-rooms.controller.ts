@@ -9,7 +9,6 @@ import {
 } from '@nestjs/common';
 import { ChatRoomsService } from './chat-rooms.service';
 import { CreateChatRoomDto } from './dto/create-chat-room.dto';
-import { ObjectId } from 'typeorm';
 import { UpdateNameChatRoomDto } from './dto/update-name-chat-room.dto';
 import { ApiTags } from '@nestjs/swagger';
 
@@ -29,20 +28,20 @@ export class ChatRoomsController {
   }
 
   @Get(':id')
-  findOne(@Param('id') id: ObjectId) {
+  findOne(@Param('id') id: number) {
     return this.chatRoomsService.findOne(id);
   }
 
   @Put(':id')
   updateName(
-    @Param('id') id: ObjectId,
+    @Param('id') id: number,
     @Body() updateNameChatRoomDto: UpdateNameChatRoomDto,
   ) {
     return this.chatRoomsService.updateName(id, updateNameChatRoomDto);
   }
 
   @Delete(':id')
-  remove(@Param('id') id: ObjectId) {
+  remove(@Param('id') id: number) {
     return this.chatRoomsService.remove(id);
   }
 }

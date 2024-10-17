@@ -1,7 +1,7 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Message } from './schemas/message.schema';
+import { Message } from './entities/message.entity';
 import { Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { ErrorHandler } from '@libs/utils/error-handler';
@@ -23,13 +23,29 @@ export class MessagesService {
   async create(createMessageDto: CreateMessageDto) {
     try {
       const message = this.messagesRepository.create(createMessageDto);
-
       return plainToInstance(
         Message,
         await this.messagesRepository.save(message),
       );
     } catch (error) {
       this.handleError(error, 'Create message failed');
+    }
+  }
+
+  async markAsRead(messageId: number) {
+    try {
+      const message = await this.messagesRepository.findOne({
+        where: { id: messageId },
+        relations: ['chatRoom'],
+      });
+      if (!message) {
+        throw new NotFoundException('Message not found');
+      }
+      message.isRead = true;
+      message.readAt = new Date();
+      return await this.messagesRepository.save(message);
+    } catch (error) {
+      this.handleError(error, 'Mark message as read failed');
     }
   }
 }
