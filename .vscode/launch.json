@@ -1,0 +1,17 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+      "request": "launch",
+      "name": "Nest Debug",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["run", "start:debug", "--", "--inspect-brk"],
+      "console": "integratedTerminal",
+      "restart": true,
+      "protocol": "auto",
+      "port": 4001,
+      "autoAttachChildProcesses": true
+    }
+  ]
+}
