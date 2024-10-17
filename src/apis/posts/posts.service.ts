@@ -13,6 +13,7 @@ import { CreatePostWithImagesDto } from './dto/create-post-with-images.dto';
 import { CreatePostDto } from './dto/create-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { Post } from './entities/post.entity';
+import { SharesService } from '@apis/shares/shares.service';
 
 @Injectable()
 export class PostsService {
@@ -24,6 +25,7 @@ export class PostsService {
     private readonly imagesService: ImagesService,
     private readonly likesService: LikesService,
     private readonly commentsService: CommentsService,
+    private readonly sharesService: SharesService,
   ) {}
 
   private getPostQueryBuilder() {
@@ -266,6 +268,50 @@ export class PostsService {
       return this.commentsService.getReplyComments(comment, post);
     } catch (error) {
       this.handleError(error, 'Get reply comments failed');
+    }
+  }
+
+  async sharePost(user: User, postId: number) {
+    try {
+      const post = await this.findOne(postId);
+      return this.sharesService.createShare(user, post);
+    } catch (error) {
+      this.handleError(error, 'Share post failed');
+    }
+  }
+
+  async unsharePost(user: User, postId: number, shareId: number) {
+    try {
+      const post = await this.findOne(postId);
+      return this.sharesService.removeShare(shareId, user, post);
+    } catch (error) {
+      this.handleError(error, 'Unshare post failed');
+    }
+  }
+
+  async restoreShare(user: User, postId: number, shareId: number) {
+    try {
+      const post = await this.findOne(postId);
+      return this.sharesService.restoreShare(shareId, user, post);
+    } catch (error) {
+      this.handleError(error, 'Restore share failed');
+    }
+  }
+
+  async getSharedPosts(user: User) {
+    try {
+      const shares = await this.sharesService.getSharesByUser(user);
+      return shares.map((share) => share.post);
+    } catch (error) {
+      this.handleError(error, 'Get shared posts failed');
+    }
+  }
+
+  async getPostShares(postId: number) {
+    try {
+      return this.sharesService.getSharesByPost(postId);
+    } catch (error) {
+      this.handleError(error, 'Get post shares failed');
     }
   }
 }

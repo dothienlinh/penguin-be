@@ -8,6 +8,7 @@ import { MulterConfigService } from '@libs/configs/multer/multer.config';
 import { ImagesModule } from '@apis/images/images.module';
 import { LikesModule } from '@apis/likes/likes.module';
 import { CommentsModule } from '@apis/comments/comments.module';
+import { SharesModule } from '@apis/shares/shares.module';
 
 @Module({
   imports: [
@@ -18,6 +19,7 @@ import { CommentsModule } from '@apis/comments/comments.module';
     ImagesModule,
     LikesModule,
     CommentsModule,
+    SharesModule,
   ],
   controllers: [PostsController],
   providers: [PostsService],
