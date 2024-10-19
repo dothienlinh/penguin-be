@@ -10,12 +10,14 @@ import { AuthController } from './auth.controller';
 import { AuthService } from './auth.service';
 import { FacebookStrategy } from '@libs/strategys/facebook.strategy';
 import { GoogleStrategy } from '@libs/strategys/google.strategy';
+import { RolesModule } from '@apis/roles/roles.module';
 
 @Module({
   imports: [
     UsersModule,
     PassportModule,
     RedisModule,
+    RolesModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({

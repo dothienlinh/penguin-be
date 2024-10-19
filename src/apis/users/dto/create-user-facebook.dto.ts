@@ -1,5 +1,11 @@
 import { Gender, Provider } from '@libs/enums';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class CreateUserFacebookDto {
   @IsString()
@@ -21,4 +27,8 @@ export class CreateUserFacebookDto {
   @IsEnum(Provider)
   @IsNotEmpty()
   provider: Provider;
+
+  @IsNumber()
+  @IsNotEmpty()
+  roleId: number;
 }

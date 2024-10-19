@@ -1,5 +1,5 @@
 import { Provider } from '@libs/enums';
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 export class CreateUserGoogleDto {
   @IsString()
@@ -25,4 +25,8 @@ export class CreateUserGoogleDto {
   @IsEnum(Provider)
   @IsNotEmpty()
   provider: Provider;
+
+  @IsNumber()
+  @IsNotEmpty()
+  roleId: number;
 }

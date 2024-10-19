@@ -4,16 +4,17 @@ import { VerifyOtpCodeDto } from './dto/verify-otp-code.dto';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { CurrentUser } from '@libs/decorators/user.decorator';
 import { User } from '@apis/users/entities/user.entity';
-import { RedisKey } from '@libs/enums';
+import { Permission, RedisKey } from '@libs/enums';
 import { Public } from '@libs/decorators/public.decorator';
 import { SendForgotPasswordDto } from './dto/send-forgot-password.dto';
-import { ResponseMessage } from '@libs/decorators/responseMessage.decorator';
+import { Permissions } from '@libs/decorators/permissions.decorator';
 
 @ApiTags('Mail')
 @Controller('mail')
 export class MailController {
   constructor(private readonly mailService: MailService) {}
 
+  @Permissions(Permission.READ_MAIL)
   @Post('send-otp-code-verification')
   @ApiOperation({ summary: 'Send OTP code verification' })
   async sendOTPCodeVerification(@CurrentUser() user: User) {
@@ -23,6 +24,7 @@ export class MailController {
     );
   }
 
+  @Permissions(Permission.READ_MAIL)
   @Post('verify-otp-code-verification')
   @ApiOperation({ summary: 'Verify OTP code verification' })
   async verifyOTPCodeVerification(
@@ -46,6 +48,7 @@ export class MailController {
     return await this.mailService.sendForgotPassword(sendForgotPasswordDto);
   }
 
+  @Permissions(Permission.READ_MAIL)
   @Post('send-reset-password')
   @ApiOperation({ summary: 'Send reset password email' })
   async sendResetPasswordSuccess(@CurrentUser() user: User) {

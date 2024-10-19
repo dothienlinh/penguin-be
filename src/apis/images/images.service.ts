@@ -1,5 +1,4 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { UpdateImageDto } from './dto/update-image.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Image } from './entities/image.entity';
@@ -31,21 +30,5 @@ export class ImagesService {
     } catch (error) {
       this.handleError(error, 'Create image failed');
     }
-  }
-
-  findAll() {
-    return `This action returns all images`;
-  }
-
-  findOne(id: number) {
-    return `This action returns a #${id} image`;
-  }
-
-  update(id: number, updateImageDto: UpdateImageDto) {
-    return `This action updates a #${id} image`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} image`;
   }
 }
