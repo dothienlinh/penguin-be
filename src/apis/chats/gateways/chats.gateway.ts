@@ -15,10 +15,10 @@ import {
   OnGatewayDisconnect,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
-import { CreateMessageDto } from '../messages/dto/create-message.dto';
-import { MessagesService } from '../messages/messages.service';
+import { CreateMessageDto } from '../dto/create-message.dto';
 import { OfflineMessagesService } from '../services/offlineMessages.service';
 import { ErrorHandler } from '@libs/utils/error-handler';
+import { MessagesService } from '../services/messages.service';
 
 @WebSocketGateway(8000, {
   cors: {

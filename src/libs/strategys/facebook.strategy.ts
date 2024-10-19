@@ -1,5 +1,6 @@
 import { AuthService } from '@apis/auth/auth.service';
-import { Gender, Provider } from '@libs/enums';
+import { RolesService } from '@apis/roles/roles.service';
+import { Gender, Provider, Roles } from '@libs/enums';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
@@ -10,6 +11,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
   constructor(
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
+    private readonly rolesService: RolesService,
   ) {
     super({
       clientID: configService.getOrThrow<string>('FACEBOOK_APP_ID'),
@@ -28,12 +30,15 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
   ) {
     const { name, id, gender } = profile;
 
+    const role = await this.rolesService.findOneByName(Roles.USER);
+
     const user = await this.authService.validateFacebookUser({
       firstName: name.givenName,
       lastName: name.familyName,
       facebookId: id,
       gender: gender in Gender ? (gender as Gender) : Gender.OTHER,
       provider: Provider.FACEBOOK,
+      roleId: role.id,
     });
 
     done(null, user);

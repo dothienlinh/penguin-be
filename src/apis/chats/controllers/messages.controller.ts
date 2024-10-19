@@ -1,6 +1,6 @@
 import { Controller } from '@nestjs/common';
-import { MessagesService } from './messages.service';
 import { ApiTags } from '@nestjs/swagger';
+import { MessagesService } from '../services/messages.service';
 
 @ApiTags('Messages')
 @Controller('messages')

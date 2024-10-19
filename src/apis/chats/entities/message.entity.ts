@@ -1,4 +1,4 @@
-import { ChatRoom } from '@apis/chats/chat-rooms/entities/chat-room.entity';
+import { ChatRoom } from '@apis/chats/entities/chat-room.entity';
 import { User } from '@apis/users/entities/user.entity';
 import { BaseEntity } from '@libs/base/base.entity';
 import { Column, Entity, JoinColumn, ManyToOne } from 'typeorm';

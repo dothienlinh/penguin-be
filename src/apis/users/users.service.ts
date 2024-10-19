@@ -14,6 +14,9 @@ import { hashPassword } from '@libs/utils/passwordUtils';
 import { CreateUserFacebookDto } from './dto/create-user-facebook.dto';
 import { CreateUserGoogleDto } from './dto/create-user-google.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { RolesService } from '@apis/roles/roles.service';
+import { Roles } from '@libs/enums';
+import { ConfigService } from '@nestjs/config';
 
 interface FindOneByFields {
   key: keyof User;
@@ -25,6 +28,8 @@ export class UsersService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
+    private readonly rolesService: RolesService,
+    private readonly configService: ConfigService,
   ) {}
 
   private readonly logger = new Logger(UsersService.name);
@@ -36,8 +41,11 @@ export class UsersService {
 
   private async createUserAndSave(
     userDto: CreateUserDto | CreateUserFacebookDto | CreateUserGoogleDto,
+    roleId: number,
   ) {
-    const user = await this.usersRepository.create(userDto).save();
+    const user = await this.usersRepository
+      .create({ ...userDto, role: { id: roleId } })
+      .save();
     return plainToInstance(User, user);
   }
 
@@ -103,6 +111,32 @@ export class UsersService {
     }
   }
 
+  async createSuperAdmin() {
+    const role = await this.rolesService.findOneByName(Roles.SUPER_ADMIN);
+    const isExistSuperAdmin = await this.findOneByFields([
+      {
+        key: 'role',
+        value: role.id,
+      },
+      {
+        key: 'email',
+        value: this.configService.getOrThrow<string>('SUPER_ADMIN_EMAIL'),
+      },
+    ]);
+
+    if (isExistSuperAdmin) return;
+
+    const user = this.usersRepository.create({
+      email: this.configService.getOrThrow<string>('SUPER_ADMIN_EMAIL'),
+      password: this.configService.getOrThrow<string>('SUPER_ADMIN_PASSWORD'),
+      firstName: 'Super',
+      lastName: 'Admin',
+      role: { id: role.id },
+    });
+
+    return await user.save();
+  }
+
   async create(createUserDto: CreateUserDto) {
     try {
       const isExistUser = await this.isExistUser('email', createUserDto.email);
@@ -113,7 +147,9 @@ export class UsersService {
 
       createUserDto.password = await hashPassword(createUserDto.password);
 
-      return await this.createUserAndSave(createUserDto);
+      const role = await this.rolesService.findOneByName(Roles.USER);
+
+      return await this.createUserAndSave(createUserDto, role.id);
     } catch (error) {
       this.handleError(error, 'Create user failed');
     }
@@ -135,6 +171,8 @@ export class UsersService {
         .createQueryBuilder('user')
         .leftJoinAndSelect('user.posts', 'posts')
         .leftJoinAndSelect('posts.images', 'images')
+        .leftJoinAndSelect('user.role', 'role')
+        .leftJoinAndSelect('user.permissions', 'permissions')
         .where('user.id = :id', { id })
         .getOne();
 
@@ -150,7 +188,10 @@ export class UsersService {
 
   async createWithFacebook(createUserFacebookDto: CreateUserFacebookDto) {
     try {
-      return await this.createUserAndSave(createUserFacebookDto);
+      return await this.createUserAndSave(
+        createUserFacebookDto,
+        createUserFacebookDto.roleId,
+      );
     } catch (error) {
       this.handleError(error, 'Create user with facebook failed');
     }
@@ -158,7 +199,10 @@ export class UsersService {
 
   async createWithGoogle(createUserGoogleDto: CreateUserGoogleDto) {
     try {
-      return await this.createUserAndSave(createUserGoogleDto);
+      return await this.createUserAndSave(
+        createUserGoogleDto,
+        createUserGoogleDto.roleId,
+      );
     } catch (error) {
       this.handleError(error, 'Create user with google failed');
     }

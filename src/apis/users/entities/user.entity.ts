@@ -1,13 +1,22 @@
-import { ChatRoom } from '@apis/chats/chat-rooms/entities/chat-room.entity';
-import { Message } from '@apis/chats/messages/entities/message.entity';
+import { ChatRoom } from '@apis/chats/entities/chat-room.entity';
+import { Message } from '@apis/chats/entities/message.entity';
 import { Comment } from '@apis/comments/entities/comment.entity';
 import { Like } from '@apis/likes/entities/like.entity';
+import { Permission } from '@apis/permissions/entities/permission.entity';
 import { Post } from '@apis/posts/entities/post.entity';
+import { Role } from '@apis/roles/entities/role.entity';
 import { Share } from '@apis/shares/entities/share.entity';
 import { BaseEntity } from '@libs/base/base.entity';
-import { Gender, Provider, Roles } from '@libs/enums';
+import { Gender, Provider } from '@libs/enums';
 import { Exclude } from 'class-transformer';
-import { Column, Entity, JoinTable, ManyToMany, OneToMany } from 'typeorm';
+import {
+  Column,
+  Entity,
+  JoinTable,
+  ManyToMany,
+  ManyToOne,
+  OneToMany,
+} from 'typeorm';
 
 @Entity()
 export class User extends BaseEntity {
@@ -65,9 +74,6 @@ export class User extends BaseEntity {
   @Exclude()
   refreshToken: string;
 
-  @Column({ type: 'enum', enum: Roles, default: Roles.USER })
-  role: Roles;
-
   @OneToMany(() => Post, (post) => post.user, {
     cascade: true,
     onDelete: 'CASCADE',
@@ -98,6 +104,12 @@ export class User extends BaseEntity {
   @OneToMany(() => Message, (message) => message.receiver)
   receivedMessages: Message[];
 
+  @ManyToOne(() => Role, (role) => role.users)
+  role: Role;
+
+  @ManyToMany(() => Permission, (permission) => permission.users)
+  permissions: Permission[];
+
   @ManyToMany(() => User, (user) => user.followers)
   @JoinTable({
     name: 'user_follows',
@@ -110,10 +122,5 @@ export class User extends BaseEntity {
   followers: User[];
 
   @ManyToMany(() => ChatRoom, (chatRoom) => chatRoom.members)
-  @JoinTable({
-    name: 'chat_room_members',
-    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
-    inverseJoinColumn: { name: 'chat_room_id', referencedColumnName: 'id' },
-  })
   chatRooms: ChatRoom[];
 }
