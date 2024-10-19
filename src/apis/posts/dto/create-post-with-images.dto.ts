@@ -3,6 +3,7 @@ import { Express } from 'express';
 import {
   IsArray,
   IsNotEmpty,
+  IsNumber,
   IsOptional,
   IsString,
   ValidateNested,
@@ -40,4 +41,9 @@ export class CreatePostWithImagesDto {
   @ValidateNested({ each: true })
   @Type(() => UploadImageDto)
   images?: Express.Multer.File[];
+
+  @IsOptional()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  categoriesId?: number[];
 }
