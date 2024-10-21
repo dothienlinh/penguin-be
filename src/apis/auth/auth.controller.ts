@@ -106,15 +106,7 @@ export class AuthController {
     @CurrentUser() user,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { accessToken } = await this.authService.login(user, res);
-
-    const nodeEnv = this.configService.getOrThrow<string>('NODE_ENV');
-    if (nodeEnv !== 'development') {
-      const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
-      res.redirect(frontendUrl + '/home');
-    } else {
-      return { accessToken };
-    }
+    return await this.authService.facebookLoginCallback(user, res);
   }
 
   @Public()
@@ -135,15 +127,7 @@ export class AuthController {
     @CurrentUser() user,
     @Res({ passthrough: true }) res: Response,
   ) {
-    const { accessToken } = await this.authService.login(user, res, true);
-
-    const nodeEnv = this.configService.getOrThrow<string>('NODE_ENV');
-    if (nodeEnv !== 'development') {
-      const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
-      res.redirect(frontendUrl + '/home');
-    } else {
-      return { accessToken };
-    }
+    return await this.authService.googleLoginCallback(user, res);
   }
 
   @Get('profile')

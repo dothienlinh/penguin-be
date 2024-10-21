@@ -68,6 +68,31 @@ export class AuthService {
     }
   }
 
+  async googleLoginCallback(user: User, res: Response) {
+    const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
+    const nodeEnv = this.configService.getOrThrow<string>('NODE_ENV');
+
+    if (!user) {
+      return res.redirect(frontendUrl);
+    }
+
+    try {
+      const { accessToken } = await this.login(user, res, true);
+
+      if (nodeEnv !== 'development') {
+        res.redirect(frontendUrl);
+      } else {
+        return { accessToken };
+      }
+    } catch (error) {
+      this.handleError(error, 'Login callback failed');
+    }
+  }
+
+  async facebookLoginCallback(user: User, res: Response) {
+    return await this.googleLoginCallback(user, res);
+  }
+
   async createRefreshToken(payload: Payload) {
     try {
       return await this.jwtService.signAsync(payload, {
