@@ -16,6 +16,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { CreateUserFacebookDto } from '@apis/users/dto/create-user-facebook.dto';
 import { CreateUserGoogleDto } from '@apis/users/dto/create-user-google.dto';
+import { generateOtpCode } from '@libs/utils/otpCode';
 
 @Injectable()
 export class AuthService {
@@ -120,6 +121,15 @@ export class AuthService {
   }
 
   async signup(createUserDto: CreateUserDto) {
+    const { otpCode, email } = createUserDto;
+    const isExistOtpCode = await this.redisService.get(
+      `${RedisKey.OTP_REGISTER}:${email}`,
+    );
+
+    if (otpCode !== isExistOtpCode) {
+      throw new BadRequestException('Invalid OTP code');
+    }
+
     return await this.usersService.create(createUserDto);
   }
 
@@ -223,6 +233,39 @@ export class AuthService {
       return await this.findOrCreateUser(profile, 'google');
     } catch (error) {
       this.handleError(error, 'Validate google user failed');
+    }
+  }
+
+  async sendOtpCodeRegister(email: string) {
+    try {
+      const user = await this.usersService.findOneByFields({
+        key: 'email',
+        value: email,
+      });
+
+      if (user) {
+        throw new BadRequestException('User already exists');
+      }
+      const isExistOtpCode = await this.redisService.get(
+        `${RedisKey.OTP_REGISTER}:${email}`,
+      );
+
+      if (isExistOtpCode) {
+        await this.redisService.del(`${RedisKey.OTP_REGISTER}:${email}`);
+      }
+
+      const otpCode = generateOtpCode();
+      await this.redisService.set({
+        key: `${RedisKey.OTP_REGISTER}:${email}`,
+        value: otpCode.toString(),
+        expired: ms(
+          this.configService.getOrThrow<string>('OTP_REGISTER_EXPIRES_IN'),
+        ),
+      });
+
+      return otpCode;
+    } catch (error) {
+      this.handleError(error, 'Send OTP code register failed');
     }
   }
 }

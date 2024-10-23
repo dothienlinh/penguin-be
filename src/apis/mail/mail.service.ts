@@ -10,6 +10,8 @@ import { Payload } from '@libs/interfaces';
 import ms from 'ms';
 import { SendForgotPasswordDto } from './dto/send-forgot-password.dto';
 import { ErrorHandler } from '@libs/utils/error-handler';
+import { generateOtpCode } from '@libs/utils/otpCode';
+import { SendRegisterDto } from './dto/send-register-dto';
 @Injectable()
 export class MailService {
   constructor(
@@ -28,7 +30,7 @@ export class MailService {
   }
 
   sendOTPCode = async (email: string, key: RedisKey) => {
-    const otpCode = Math.floor(100000 + Math.random() * 900000);
+    const otpCode = generateOtpCode();
     return await this.mailerService
       .sendMail({
         to: email,
@@ -119,6 +121,31 @@ export class MailService {
         });
     } catch (error) {
       this.handleError(error, 'Send forgot password failed');
+    }
+  };
+
+  sendOtpCodeRegister = async (sendRegisterDto: SendRegisterDto) => {
+    try {
+      const { email } = sendRegisterDto;
+      const otpCode = await this.authService.sendOtpCodeRegister(email);
+
+      return await this.mailerService
+        .sendMail({
+          to: email,
+          subject: 'OTP Code Register',
+          template: 'sendOTPCodeRegister',
+          context: {
+            otpCode,
+          },
+        })
+        .then(async () => {
+          return true;
+        })
+        .catch((error) => {
+          this.handleError(error, 'Send forgot password failed');
+        });
+    } catch (error) {
+      this.handleError(error, 'Send OTP code register failed');
     }
   };
 }
