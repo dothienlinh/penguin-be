@@ -3,7 +3,8 @@ import { ForgotPasswordDto } from './forgot-password.dto';
 import { OmitType } from '@nestjs/swagger';
 
 export class ResetPasswordDto extends OmitType(ForgotPasswordDto, [
-  'token',
+  'otpCode',
+  'email',
 ] as const) {
   @IsString()
   @IsNotEmpty()

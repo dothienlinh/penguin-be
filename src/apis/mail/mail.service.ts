@@ -1,15 +1,16 @@
+import { AuthService } from '@apis/auth/auth.service';
+import { UsersService } from '@apis/users/users.service';
+import { RedisService } from '@libs/configs/redis/redis.service';
+import { RedisKey } from '@libs/enums';
+import { ErrorHandler } from '@libs/utils/error-handler';
+import { generateOtpCode } from '@libs/utils/otpCode';
 import { MailerService } from '@nestjs-modules/mailer';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { RedisService } from '@libs/configs/redis/redis.service';
-import { VerifyOtpCodeDto } from './dto/verify-otp-code.dto';
-import { UsersService } from '@apis/users/users.service';
-import { RedisKey } from '@libs/enums';
 import { ConfigService } from '@nestjs/config';
-import { AuthService } from '@apis/auth/auth.service';
-import { Payload } from '@libs/interfaces';
 import ms from 'ms';
 import { SendForgotPasswordDto } from './dto/send-forgot-password.dto';
-import { ErrorHandler } from '@libs/utils/error-handler';
+import { SendRegisterDto } from './dto/send-register-dto';
+import { VerifyOtpCodeDto } from './dto/verify-otp-code.dto';
 @Injectable()
 export class MailService {
   constructor(
@@ -28,7 +29,13 @@ export class MailService {
   }
 
   sendOTPCode = async (email: string, key: RedisKey) => {
-    const otpCode = Math.floor(100000 + Math.random() * 900000);
+    const isExistOtpCode = await this.redisService.get(`${key}:${email}`);
+
+    if (isExistOtpCode) {
+      await this.redisService.del(`${key}:${email}`);
+    }
+
+    const otpCode = generateOtpCode();
     return await this.mailerService
       .sendMail({
         to: email,
@@ -85,12 +92,15 @@ export class MailService {
         throw new BadRequestException('User not found');
       }
 
-      const payload: Payload = {
-        sub: user.id,
-      };
-      const token = await this.authService.createForgotPasswordToken(payload);
+      const isExistOtpCode = await this.redisService.get(
+        `${RedisKey.FORGOT_PASSWORD}:${email}`,
+      );
 
-      const link = `${this.configService.get('FRONTEND_URL')}/auth/reset-password?token=${token}`;
+      if (isExistOtpCode) {
+        await this.redisService.del(`${RedisKey.FORGOT_PASSWORD}:${email}`);
+      }
+
+      const otpCode = generateOtpCode();
 
       return await this.mailerService
         .sendMail({
@@ -98,16 +108,16 @@ export class MailService {
           subject: 'Forgot Password',
           template: 'sendForgotPassword',
           context: {
-            link,
+            otpCode,
           },
         })
         .then(async () => {
           await this.redisService.set({
-            key: `${RedisKey.FORGOT_PASSWORD}:${token}`,
-            value: user.id,
+            key: `${RedisKey.FORGOT_PASSWORD}:${email}`,
+            value: otpCode,
             expired: ms(
               this.configService.getOrThrow<string>(
-                'FORGOT_PASSWORD_EXPIRES_IN',
+                'OTP_FORGOT_PASSWORD_EXPIRES_IN',
               ),
             ),
           });
@@ -119,6 +129,31 @@ export class MailService {
         });
     } catch (error) {
       this.handleError(error, 'Send forgot password failed');
+    }
+  };
+
+  sendOtpCodeRegister = async (sendRegisterDto: SendRegisterDto) => {
+    try {
+      const { email } = sendRegisterDto;
+      const otpCode = await this.authService.sendOtpCodeRegister(email);
+
+      return await this.mailerService
+        .sendMail({
+          to: email,
+          subject: 'OTP Code Register',
+          template: 'sendOTPCodeRegister',
+          context: {
+            otpCode,
+          },
+        })
+        .then(async () => {
+          return true;
+        })
+        .catch((error) => {
+          this.handleError(error, 'Send forgot password failed');
+        });
+    } catch (error) {
+      this.handleError(error, 'Send OTP code register failed');
     }
   };
 }

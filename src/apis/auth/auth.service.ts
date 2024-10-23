@@ -16,6 +16,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { CreateUserFacebookDto } from '@apis/users/dto/create-user-facebook.dto';
 import { CreateUserGoogleDto } from '@apis/users/dto/create-user-google.dto';
+import { generateOtpCode } from '@libs/utils/otpCode';
 
 @Injectable()
 export class AuthService {
@@ -104,22 +105,16 @@ export class AuthService {
     }
   }
 
-  async createForgotPasswordToken(payload: Payload) {
-    try {
-      return await this.jwtService.signAsync(payload, {
-        secret: this.configService.getOrThrow<string>(
-          'FORGOT_PASSWORD_SECRET_JWT',
-        ),
-        expiresIn: this.configService.getOrThrow<string>(
-          'FORGOT_PASSWORD_EXPIRES_IN',
-        ),
-      });
-    } catch (error) {
-      this.handleError(error, 'Create forgot password token failed');
-    }
-  }
-
   async signup(createUserDto: CreateUserDto) {
+    const { otpCode, email } = createUserDto;
+    const isExistOtpCode = await this.redisService.get(
+      `${RedisKey.OTP_REGISTER}:${email}`,
+    );
+
+    if (otpCode !== isExistOtpCode) {
+      throw new BadRequestException('Invalid OTP code');
+    }
+
     return await this.usersService.create(createUserDto);
   }
 
@@ -146,24 +141,24 @@ export class AuthService {
 
   async forgotPassword(forgotPasswordDto: ForgotPasswordDto) {
     try {
-      const { password, token } = forgotPasswordDto;
-      const userId = await this.redisService.get(
-        `${RedisKey.FORGOT_PASSWORD}:${token}`,
+      const { password, otpCode, email } = forgotPasswordDto;
+      const otpCodeRedis = await this.redisService.get(
+        `${RedisKey.FORGOT_PASSWORD}:${email}`,
       );
 
-      if (!userId) {
-        throw new BadRequestException('Invalid token');
+      if (+otpCode !== +otpCodeRedis) {
+        throw new BadRequestException('Invalid OTP code');
       }
 
-      await this.redisService.del(`${RedisKey.FORGOT_PASSWORD}:${token}`);
+      const [user] = await Promise.all([
+        this.usersService.findOneByFields({
+          key: 'email',
+          value: email,
+        }),
+        this.redisService.del(`${RedisKey.FORGOT_PASSWORD}:${email}`),
+      ]);
 
-      await this.jwtService.verifyAsync(token, {
-        secret: this.configService.getOrThrow<string>(
-          'FORGOT_PASSWORD_SECRET_JWT',
-        ),
-      });
-
-      return await this.usersService.updatePassword(+userId, password);
+      return await this.usersService.updatePassword(user, password);
     } catch (error) {
       this.handleError(error, 'Forgot password failed');
     }
@@ -183,7 +178,7 @@ export class AuthService {
 
       await this.redisService.del(`${RedisKey.RESET_PASSWORD}:${user.email}`);
 
-      return await this.usersService.updatePassword(user.id, password);
+      return await this.usersService.updatePassword(user, password);
     } catch (error) {
       this.handleError(error, 'Reset password failed');
     }
@@ -223,6 +218,39 @@ export class AuthService {
       return await this.findOrCreateUser(profile, 'google');
     } catch (error) {
       this.handleError(error, 'Validate google user failed');
+    }
+  }
+
+  async sendOtpCodeRegister(email: string) {
+    try {
+      const user = await this.usersService.findOneByFields({
+        key: 'email',
+        value: email,
+      });
+
+      if (user) {
+        throw new BadRequestException('User already exists');
+      }
+      const isExistOtpCode = await this.redisService.get(
+        `${RedisKey.OTP_REGISTER}:${email}`,
+      );
+
+      if (isExistOtpCode) {
+        await this.redisService.del(`${RedisKey.OTP_REGISTER}:${email}`);
+      }
+
+      const otpCode = generateOtpCode();
+      await this.redisService.set({
+        key: `${RedisKey.OTP_REGISTER}:${email}`,
+        value: otpCode.toString(),
+        expired: ms(
+          this.configService.getOrThrow<string>('OTP_REGISTER_EXPIRES_IN'),
+        ),
+      });
+
+      return otpCode;
+    } catch (error) {
+      this.handleError(error, 'Send OTP code register failed');
     }
   }
 }
