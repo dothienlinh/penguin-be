@@ -1,10 +1,5 @@
 import { ErrorHandler } from '@libs/utils/error-handler';
-import {
-  ConflictException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { User } from './entities/user.entity';
@@ -44,7 +39,7 @@ export class UsersService {
     roleId: number,
   ) {
     const user = await this.usersRepository
-      .create({ ...userDto, role: { id: roleId } })
+      .create({ ...userDto, role: { id: roleId }, isVerified: true })
       .save();
     return plainToInstance(User, user);
   }
@@ -128,7 +123,9 @@ export class UsersService {
 
     const user = this.usersRepository.create({
       email: this.configService.getOrThrow<string>('SUPER_ADMIN_EMAIL'),
-      password: this.configService.getOrThrow<string>('SUPER_ADMIN_PASSWORD'),
+      password: await hashPassword(
+        this.configService.getOrThrow<string>('SUPER_ADMIN_PASSWORD'),
+      ),
       firstName: 'Super',
       lastName: 'Admin',
       role: { id: role.id },
@@ -139,12 +136,6 @@ export class UsersService {
 
   async create(createUserDto: CreateUserDto) {
     try {
-      const isExistUser = await this.isExistUser('email', createUserDto.email);
-
-      if (isExistUser) {
-        throw new ConflictException('User already exists');
-      }
-
       createUserDto.password = await hashPassword(createUserDto.password);
 
       const role = await this.rolesService.findOneByName(Roles.USER);
@@ -155,9 +146,9 @@ export class UsersService {
     }
   }
 
-  async updatePassword(id: number, password: string) {
+  async updatePassword(user: User, password: string) {
     try {
-      return await this.usersRepository.update(id, {
+      return await this.usersRepository.update(user.id, {
         password: await hashPassword(password),
       });
     } catch (error) {

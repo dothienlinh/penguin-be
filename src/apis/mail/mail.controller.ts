@@ -8,6 +8,7 @@ import { Permission, RedisKey } from '@libs/enums';
 import { Public } from '@libs/decorators/public.decorator';
 import { SendForgotPasswordDto } from './dto/send-forgot-password.dto';
 import { Permissions } from '@libs/decorators/permissions.decorator';
+import { SendRegisterDto } from './dto/send-register-dto';
 
 @ApiTags('Mail')
 @Controller('mail')
@@ -56,5 +57,12 @@ export class MailController {
       user.email,
       RedisKey.RESET_PASSWORD,
     );
+  }
+
+  @Public()
+  @Post('send-otp-code-register')
+  @ApiOperation({ summary: 'Send OTP code register' })
+  async sendOtpCodeRegister(@Body() sendRegisterDto: SendRegisterDto) {
+    return await this.mailService.sendOtpCodeRegister(sendRegisterDto);
   }
 }

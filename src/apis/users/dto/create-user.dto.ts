@@ -1,9 +1,6 @@
 import { IsMatch } from '@libs/decorators/isMatch.decorator';
-import { Gender } from '@libs/enums';
 import {
-  IsDateString,
   IsEmail,
-  IsEnum,
   IsNotEmpty,
   IsString,
   MaxLength,
@@ -24,14 +21,6 @@ export class CreateUserDto {
   @IsEmail()
   email: string;
 
-  @IsEnum(Gender)
-  @IsNotEmpty()
-  gender: Gender;
-
-  @IsDateString()
-  @IsNotEmpty()
-  birthDate: Date;
-
   @IsString()
   @IsNotEmpty()
   @MaxLength(20)
@@ -44,4 +33,8 @@ export class CreateUserDto {
   @MinLength(8)
   @IsMatch('password')
   passwordConfirm: string;
+
+  @IsString()
+  @IsNotEmpty()
+  otpCode: string;
 }
