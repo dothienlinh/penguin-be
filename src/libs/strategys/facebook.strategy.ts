@@ -33,8 +33,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     const role = await this.rolesService.findOneByName(Roles.USER);
 
     const user = await this.authService.validateFacebookUser({
-      firstName: name.givenName,
-      lastName: name.familyName,
+      username: name.givenName,
       facebookId: id,
       gender: gender in Gender ? (gender as Gender) : Gender.OTHER,
       provider: Provider.FACEBOOK,

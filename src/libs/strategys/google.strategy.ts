@@ -31,8 +31,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     const role = await this.rolesService.findOneByName(Roles.USER);
     const user = await this.authService.validateGoogleUser({
       email: emails[0].value,
-      firstName: name.givenName,
-      lastName: name.familyName,
+      username: name.givenName,
       googleId: id,
       avatar: photos[0].value,
       provider: Provider.GOOGLE,
