@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Image } from './entities/image.entity';
 import { Post } from '@apis/posts/entities/post.entity';
-import { ErrorHandler } from '@libs/utils/error-handler';
+import { ErrorHandler } from '@libs/utils/error-handler.utils';
 
 @Injectable()
 export class ImagesService {

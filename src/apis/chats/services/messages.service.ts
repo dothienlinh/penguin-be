@@ -1,4 +1,4 @@
-import { ErrorHandler } from '@libs/utils/error-handler';
+import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';

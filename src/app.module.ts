@@ -16,7 +16,7 @@ import { dataSourceOptions } from '@database/data-source';
 import { JwtAuthGuard } from '@libs/guards/jwt-auth.guard';
 import { PermissionGuard } from '@libs/guards/permission.guard';
 import { TransformInterceptor } from '@libs/interceptors/response.interceptor';
-import { interpolateEnvVariables } from '@libs/utils/env-utils';
+import { interpolateEnvVariables } from '@libs/utils/env.utils';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';

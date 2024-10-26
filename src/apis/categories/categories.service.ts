@@ -9,7 +9,7 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Category } from './entities/category.entity';
 import { IsNull, Not, Repository } from 'typeorm';
-import { ErrorHandler } from '@libs/utils/error-handler';
+import { ErrorHandler } from '@libs/utils/error-handler.utils';
 
 @Injectable()
 export class CategoriesService {

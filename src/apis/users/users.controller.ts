@@ -71,29 +71,33 @@ export class UsersController {
   @Permissions(Permission.UPDATE_USER)
   @Patch(':id')
   @ApiOperation({ summary: 'Update user' })
-  async update(@Param('id') id: number, @Body() updateUserDto: UpdateUserDto) {
-    return await this.usersService.update(id, updateUserDto);
+  async update(
+    @Param('id') id: number,
+    @Body() updateUserDto: UpdateUserDto,
+    @CurrentUser() user: User,
+  ) {
+    return await this.usersService.update(id, updateUserDto, user);
   }
 
   @Permissions(Permission.UPDATE_USER)
   @Patch(':id/activate')
   @ApiOperation({ summary: 'Activate user' })
-  async activate(@Param('id') id: number) {
-    return await this.usersService.updateActivateUser(id, true);
+  async activate(@CurrentUser() user: User) {
+    return await this.usersService.updateActivateUser(true, user);
   }
 
   @Permissions(Permission.UPDATE_USER)
   @Patch(':id/deactivate')
   @ApiOperation({ summary: 'Deactivate user' })
-  async deactivate(@Param('id') id: number) {
-    return await this.usersService.updateActivateUser(id, false);
+  async deactivate(@CurrentUser() user: User) {
+    return await this.usersService.updateActivateUser(false, user);
   }
 
   @Permissions(Permission.DELETE_USER)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete user' })
-  async remove(@Param('id') id: number) {
-    return await this.usersService.delete(id);
+  async remove(@CurrentUser() user: User) {
+    return await this.usersService.delete(user.id);
   }
 
   @Permissions(Permission.WRITE_USER)

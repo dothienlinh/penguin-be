@@ -9,7 +9,7 @@ import { Repository } from 'typeorm';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { Role } from './entities/role.entity';
-import { ErrorHandler } from '@libs/utils/error-handler';
+import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { Roles } from '@libs/enums';
 
 @Injectable()

@@ -1,17 +1,19 @@
-import { ErrorHandler } from '@libs/utils/error-handler';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { In, Repository } from 'typeorm';
-import { User } from './entities/user.entity';
-import { plainToInstance } from 'class-transformer';
-import { CreateUserDto } from './dto/create-user.dto';
-import { hashPassword } from '@libs/utils/passwordUtils';
-import { CreateUserFacebookDto } from './dto/create-user-facebook.dto';
-import { CreateUserGoogleDto } from './dto/create-user-google.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
+import { PermissionsService } from '@apis/permissions/permissions.service';
 import { RolesService } from '@apis/roles/roles.service';
 import { Roles } from '@libs/enums';
+import { ErrorHandler } from '@libs/utils/error-handler.utils';
+import { hashPassword } from '@libs/utils/password.utils';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectRepository } from '@nestjs/typeorm';
+import { plainToInstance } from 'class-transformer';
+import { In, Repository } from 'typeorm';
+import { CreateUserFacebookDto } from './dto/create-user-facebook.dto';
+import { CreateUserGoogleDto } from './dto/create-user-google.dto';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { User } from './entities/user.entity';
+import { AccessControl } from '@libs/utils/access-control.util';
 
 interface FindOneByFields {
   key: keyof User;
@@ -25,6 +27,7 @@ export class UsersService {
     private readonly usersRepository: Repository<User>,
     private readonly rolesService: RolesService,
     private readonly configService: ConfigService,
+    private readonly permissionsService: PermissionsService,
   ) {}
 
   private readonly logger = new Logger(UsersService.name);
@@ -36,10 +39,18 @@ export class UsersService {
 
   private async createUserAndSave(
     userDto: CreateUserDto | CreateUserFacebookDto | CreateUserGoogleDto,
-    roleId: number,
   ) {
+    const permissions =
+      await this.permissionsService.getDefaultPermissionsUser();
+
+    console.log(permissions);
+
     const user = await this.usersRepository
-      .create({ ...userDto, role: { id: roleId }, isVerified: true })
+      .create({
+        ...userDto,
+        isVerified: true,
+        permissions,
+      })
       .save();
     return plainToInstance(User, user);
   }
@@ -139,7 +150,9 @@ export class UsersService {
 
       const role = await this.rolesService.findOneByName(Roles.USER);
 
-      return await this.createUserAndSave(createUserDto, role.id);
+      createUserDto.role = role;
+
+      return await this.createUserAndSave(createUserDto);
     } catch (error) {
       this.handleError(error, 'Create user failed');
     }
@@ -178,10 +191,10 @@ export class UsersService {
 
   async createWithFacebook(createUserFacebookDto: CreateUserFacebookDto) {
     try {
-      return await this.createUserAndSave(
-        createUserFacebookDto,
-        createUserFacebookDto.roleId,
-      );
+      const role = await this.rolesService.findOneByName(Roles.USER);
+
+      createUserFacebookDto.role = role;
+      return await this.createUserAndSave(createUserFacebookDto);
     } catch (error) {
       this.handleError(error, 'Create user with facebook failed');
     }
@@ -189,10 +202,9 @@ export class UsersService {
 
   async createWithGoogle(createUserGoogleDto: CreateUserGoogleDto) {
     try {
-      return await this.createUserAndSave(
-        createUserGoogleDto,
-        createUserGoogleDto.roleId,
-      );
+      const role = await this.rolesService.findOneByName(Roles.USER);
+      createUserGoogleDto.role = role;
+      return await this.createUserAndSave(createUserGoogleDto);
     } catch (error) {
       this.handleError(error, 'Create user with google failed');
     }
@@ -292,8 +304,10 @@ export class UsersService {
     }
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto) {
+  async update(id: number, updateUserDto: UpdateUserDto, user: User) {
     try {
+      AccessControl.checkUserAccess(user, id);
+
       await this.findOneById(id);
       const updatedUser = await this.usersRepository.update(+id, updateUserDto);
       return plainToInstance(User, updatedUser);
@@ -302,9 +316,9 @@ export class UsersService {
     }
   }
 
-  async updateActivateUser(id: number, isActive: boolean) {
+  async updateActivateUser(isActive: boolean, user: User) {
     try {
-      return await this.usersRepository.update(id, { isActive });
+      return await this.usersRepository.update(user.id, { isActive });
     } catch (error) {
       this.handleError(error, 'Update activate user failed');
     }

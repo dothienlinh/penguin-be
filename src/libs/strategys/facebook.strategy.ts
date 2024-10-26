@@ -39,7 +39,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       facebookId: id,
       gender: gender in Gender ? (gender as Gender) : Gender.OTHER,
       provider: Provider.FACEBOOK,
-      roleId: role.id,
+      role: role,
     });
 
     done(null, user);
