@@ -62,6 +62,8 @@ export const PERMISSIONS_ADMIN_ONLY = [
 
 export const PERMISSIONS_USER_ONLY = [
   Permission.READ_USER,
+  Permission.WRITE_USER,
+  Permission.DELETE_USER,
   Permission.READ_POST,
   Permission.READ_COMMENT,
   Permission.READ_SHARE,

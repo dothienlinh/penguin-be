@@ -6,7 +6,7 @@ import { User } from '@apis/users/entities/user.entity';
 import { LikeType } from '@libs/enums';
 import { Comment } from '@apis/comments/entities/comment.entity';
 import { Post } from '@apis/posts/entities/post.entity';
-import { ErrorHandler } from '@libs/utils/error-handler';
+import { ErrorHandler } from '@libs/utils/error-handler.utils';
 
 @Injectable()
 export class LikesService {

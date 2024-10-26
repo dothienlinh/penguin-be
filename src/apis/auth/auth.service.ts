@@ -4,8 +4,8 @@ import { UsersService } from '@apis/users/users.service';
 import { RedisService } from '@libs/configs/redis/redis.service';
 import { RedisKey } from '@libs/enums';
 import { Payload } from '@libs/interfaces';
-import { ErrorHandler } from '@libs/utils/error-handler';
-import { comparePassword } from '@libs/utils/passwordUtils';
+import { ErrorHandler } from '@libs/utils/error-handler.utils';
+import { comparePassword } from '@libs/utils/password.utils';
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
@@ -16,7 +16,7 @@ import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { CreateUserFacebookDto } from '@apis/users/dto/create-user-facebook.dto';
 import { CreateUserGoogleDto } from '@apis/users/dto/create-user-google.dto';
-import { generateOtpCode } from '@libs/utils/otpCode';
+import { generateOtpCode } from '@libs/utils/otpCode.utils';
 
 @Injectable()
 export class AuthService {

@@ -1,5 +1,8 @@
+import { Role } from '@apis/roles/entities/role.entity';
 import { REGEX_USERNAME } from '@libs/constants';
 import { IsMatch } from '@libs/decorators/isMatch.decorator';
+import { ApiHideProperty } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   IsEmail,
   IsNotEmpty,
@@ -39,4 +42,9 @@ export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
   otpCode: string;
+
+  @ApiHideProperty()
+  @Type(() => Role)
+  @IsNotEmpty()
+  role: Role;
 }

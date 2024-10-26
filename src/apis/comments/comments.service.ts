@@ -1,7 +1,7 @@
 import { LikesService } from '@apis/likes/likes.service';
 import { Post } from '@apis/posts/entities/post.entity';
 import { User } from '@apis/users/entities/user.entity';
-import { ErrorHandler } from '@libs/utils/error-handler';
+import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';

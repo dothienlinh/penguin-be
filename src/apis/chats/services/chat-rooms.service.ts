@@ -3,7 +3,7 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { UsersService } from '@apis/users/users.service';
-import { ErrorHandler } from '@libs/utils/error-handler';
+import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { ChatRoom } from '../entities/chat-room.entity';
 import { CreateChatRoomDto } from '../dto/create-chat-room.dto';
 import { UpdateNameChatRoomDto } from '../dto/update-name-chat-room.dto';

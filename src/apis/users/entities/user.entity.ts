@@ -104,7 +104,15 @@ export class User extends BaseEntity {
   @ManyToOne(() => Role, (role) => role.users)
   role: Role;
 
-  @ManyToMany(() => Permission, (permission) => permission.users)
+  @ManyToMany(() => Permission, (permission) => permission.users, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  @JoinTable({
+    name: 'user_permissions',
+    joinColumn: { name: 'user_id', referencedColumnName: 'id' },
+    inverseJoinColumn: { name: 'permission_id', referencedColumnName: 'id' },
+  })
   permissions: Permission[];
 
   @ManyToMany(() => User, (user) => user.followers)

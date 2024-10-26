@@ -1,9 +1,10 @@
+import { Role } from '@apis/roles/entities/role.entity';
 import { REGEX_USERNAME } from '@libs/constants';
 import { Gender, Provider } from '@libs/enums';
+import { Type } from 'class-transformer';
 import {
   IsEnum,
   IsNotEmpty,
-  IsNumber,
   IsOptional,
   IsString,
   Matches,
@@ -30,7 +31,7 @@ export class CreateUserFacebookDto {
   @IsNotEmpty()
   provider: Provider;
 
-  @IsNumber()
-  @IsNotEmpty()
-  roleId: number;
+  @Type(() => Role)
+  @IsOptional()
+  role: Role;
 }

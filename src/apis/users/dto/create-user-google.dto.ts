@@ -1,12 +1,8 @@
+import { Role } from '@apis/roles/entities/role.entity';
 import { REGEX_USERNAME } from '@libs/constants';
 import { Provider } from '@libs/enums';
-import {
-  IsEnum,
-  IsNotEmpty,
-  IsNumber,
-  IsString,
-  Matches,
-} from 'class-validator';
+import { Type } from 'class-transformer';
+import { IsEnum, IsNotEmpty, IsString, Matches } from 'class-validator';
 
 export class CreateUserGoogleDto {
   @IsString()
@@ -33,7 +29,7 @@ export class CreateUserGoogleDto {
   @IsNotEmpty()
   provider: Provider;
 
-  @IsNumber()
+  @Type(() => Role)
   @IsNotEmpty()
-  roleId: number;
+  role: Role;
 }

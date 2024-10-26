@@ -1,3 +1,5 @@
+import { Permission as PermissionEnum } from '@libs/enums';
+import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import {
   ConflictException,
   Injectable,
@@ -5,12 +7,12 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { Permission } from './entities/permission.entity';
-import { Permission as PermissionEnum } from '@libs/enums';
-import { ErrorHandler } from '@libs/utils/error-handler';
+import { PERMISSIONS_USER_ONLY } from '@libs/constants';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class PermissionsService {
@@ -81,6 +83,15 @@ export class PermissionsService {
     } catch (error) {
       this.handleError(error, 'Error creating permission');
     }
+  }
+
+  async getDefaultPermissionsUser() {
+    const defaultPermissionNames = [...PERMISSIONS_USER_ONLY];
+    const permissions = await this.permissionRepository.findBy({
+      name: In(defaultPermissionNames),
+    });
+
+    return plainToInstance(Permission, permissions);
   }
 
   async findAll() {
