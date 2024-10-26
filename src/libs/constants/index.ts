@@ -68,3 +68,5 @@ export const PERMISSIONS_USER_ONLY = [
   Permission.READ_CHAT,
   Permission.READ_IMAGE,
 ];
+
+export const REGEX_USERNAME = /^[a-zA-Z0-9_]{3,20}$/;

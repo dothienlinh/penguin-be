@@ -14,8 +14,8 @@ export class DatabasesService implements OnModuleInit {
   ) {}
 
   async onModuleInit() {
-    await this.usersService.createSuperAdmin();
     await this.rolesService.createRoles();
+    await this.usersService.createSuperAdmin();
     await this.permissionsService.createPermissions();
     await this.categoriesService.createCategories();
   }

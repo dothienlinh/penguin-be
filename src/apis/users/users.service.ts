@@ -126,8 +126,7 @@ export class UsersService {
       password: await hashPassword(
         this.configService.getOrThrow<string>('SUPER_ADMIN_PASSWORD'),
       ),
-      firstName: 'Super',
-      lastName: 'Admin',
+      username: 'Super_Admin',
       role: { id: role.id },
     });
 

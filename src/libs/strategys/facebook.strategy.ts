@@ -28,13 +28,14 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
     profile: Profile,
     done: (err: any, user: any, info?: any) => void,
   ) {
-    const { name, id, gender } = profile;
+    const { name, id, gender, username } = profile;
 
     const role = await this.rolesService.findOneByName(Roles.USER);
 
+    console.log(profile);
+
     const user = await this.authService.validateFacebookUser({
-      firstName: name.givenName,
-      lastName: name.familyName,
+      username: username ?? name.givenName,
       facebookId: id,
       gender: gender in Gender ? (gender as Gender) : Gender.OTHER,
       provider: Provider.FACEBOOK,

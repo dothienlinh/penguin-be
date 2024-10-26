@@ -1,3 +1,4 @@
+import { REGEX_USERNAME } from '@libs/constants';
 import { Gender, Provider } from '@libs/enums';
 import {
   IsEnum,
@@ -5,16 +6,17 @@ import {
   IsNumber,
   IsOptional,
   IsString,
+  Matches,
 } from 'class-validator';
 
 export class CreateUserFacebookDto {
   @IsString()
   @IsNotEmpty()
-  lastName: string;
-
-  @IsString()
-  @IsNotEmpty()
-  firstName: string;
+  @Matches(REGEX_USERNAME, {
+    message:
+      'Username must be 3-20 characters, only letters, numbers, and underscores',
+  })
+  username: string;
 
   @IsString()
   @IsNotEmpty()

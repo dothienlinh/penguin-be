@@ -27,11 +27,8 @@ export class User extends BaseEntity {
   @Exclude()
   password: string;
 
-  @Column({ type: 'varchar', name: 'last_name' })
-  lastName: string;
-
-  @Column({ type: 'varchar', name: 'first_name' })
-  firstName: string;
+  @Column({ type: 'varchar', name: 'username' })
+  username: string;
 
   @Column({ type: 'text', nullable: true })
   avatar: string;

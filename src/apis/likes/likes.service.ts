@@ -86,7 +86,7 @@ export class LikesService {
       },
       relations: ['user'],
       select: {
-        user: { id: true, avatar: true, lastName: true, firstName: true },
+        user: { id: true, avatar: true, username: true },
       },
     });
 
