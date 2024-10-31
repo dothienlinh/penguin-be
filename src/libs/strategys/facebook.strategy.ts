@@ -32,8 +32,6 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
 
     const role = await this.rolesService.findOneByName(Roles.USER);
 
-    console.log(profile);
-
     const user = await this.authService.validateFacebookUser({
       username: username ?? name.givenName,
       facebookId: id,

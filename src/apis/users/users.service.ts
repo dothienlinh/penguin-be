@@ -43,8 +43,6 @@ export class UsersService {
     const permissions =
       await this.permissionsService.getDefaultPermissionsUser();
 
-    console.log(permissions);
-
     const user = await this.usersRepository
       .create({
         ...userDto,
@@ -83,6 +81,7 @@ export class UsersService {
 
   async findOneByFields<K extends keyof User>(
     fields: FindOneByFields[] | FindOneByFields,
+    relations: string[] = [],
   ) {
     try {
       const fieldsArray = Array.isArray(fields) ? fields : [fields];
@@ -94,7 +93,10 @@ export class UsersService {
         },
         {} as { [key in K]: User[K] },
       );
-      const user = await this.usersRepository.findOneBy(whereClause);
+      const user = await this.usersRepository.findOne({
+        where: whereClause,
+        relations,
+      });
       return user || null;
     } catch (error) {
       this.handleError(error, 'Find user by fields failed');
@@ -350,4 +352,6 @@ export class UsersService {
       this.handleError(error, 'Unfollow user failed');
     }
   }
+
+  async getRanking() {}
 }

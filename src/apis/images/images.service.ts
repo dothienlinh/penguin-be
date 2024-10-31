@@ -1,9 +1,10 @@
+import { Post } from '@apis/posts/entities/post.entity';
+import { ImageType } from '@libs/enums';
+import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Image } from './entities/image.entity';
-import { Post } from '@apis/posts/entities/post.entity';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
 
 @Injectable()
 export class ImagesService {
@@ -19,9 +20,9 @@ export class ImagesService {
     return ErrorHandler.handle(error, message);
   }
 
-  async create({ url, post }: { url: string[]; post: Post }) {
+  async create(url: string[], post: Post, type: ImageType) {
     try {
-      const values = url.map((url) => ({ url, post }));
+      const values = url.map((url) => ({ url, post, type }));
       return await this.imagesRepository
         .createQueryBuilder('image')
         .insert()
@@ -30,5 +31,34 @@ export class ImagesService {
     } catch (error) {
       this.handleError(error, 'Create image failed');
     }
+  }
+
+  async createThumbnail(url: string, post: Post) {
+    const create = this.imagesRepository.create({
+      url,
+      post,
+      type: ImageType.THUMBNAIL,
+    });
+    return await this.imagesRepository.save(create);
+  }
+
+  async updateImages(urls: string[], post: Post) {
+    const images = await this.imagesRepository.find({ where: { post } });
+
+    const update = images.map((image, index) => ({
+      ...image,
+      url: urls[index],
+      type: ImageType.IMAGE,
+    }));
+    return await this.imagesRepository.save(update);
+  }
+
+  async updateThumbnail(url: string, post: Post) {
+    const update = this.imagesRepository.create({
+      url,
+      post,
+      type: ImageType.THUMBNAIL,
+    });
+    return await this.imagesRepository.save(update);
   }
 }

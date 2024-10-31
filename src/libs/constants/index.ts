@@ -30,6 +30,8 @@ export const FILE_TYPES = [
   'audio/wav',
 ];
 
+export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
+
 export const UPLOAD_FOLDER = 'uploads';
 
 export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
@@ -58,6 +60,7 @@ export const PERMISSIONS_ADMIN_ONLY = [
   Permission.READ_IMAGE,
   Permission.WRITE_IMAGE,
   Permission.DELETE_IMAGE,
+  Permission.UPDATE_STATUS_POST,
 ];
 
 export const PERMISSIONS_USER_ONLY = [
@@ -69,6 +72,7 @@ export const PERMISSIONS_USER_ONLY = [
   Permission.READ_SHARE,
   Permission.READ_CHAT,
   Permission.READ_IMAGE,
+  Permission.UPDATE_TO_DRAFT,
 ];
 
 export const REGEX_USERNAME = /^[a-zA-Z0-9_]{3,20}$/;
