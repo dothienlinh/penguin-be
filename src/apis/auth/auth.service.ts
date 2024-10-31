@@ -2,7 +2,7 @@ import { CreateUserDto } from '@apis/users/dto/create-user.dto';
 import { User } from '@apis/users/entities/user.entity';
 import { UsersService } from '@apis/users/users.service';
 import { RedisService } from '@libs/configs/redis/redis.service';
-import { RedisKey } from '@libs/enums';
+import { RedisKey, Roles } from '@libs/enums';
 import { Payload } from '@libs/interfaces';
 import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { comparePassword } from '@libs/utils/password.utils';
@@ -81,7 +81,8 @@ export class AuthService {
       const { accessToken } = await this.login(user, res, true);
 
       if (nodeEnv !== 'development') {
-        res.redirect(frontendUrl);
+        const pathname = user?.role?.name === Roles.USER ? '/' : '/admin';
+        res.redirect(`${frontendUrl}${pathname}`);
       } else {
         return { accessToken };
       }
@@ -191,10 +192,13 @@ export class AuthService {
     socialPlatform: 'facebook' | 'google',
   ): Promise<User> {
     const key = socialPlatform === 'facebook' ? 'facebookId' : 'googleId';
-    const user = await this.usersService.findOneByFields({
-      key,
-      value: profile[key],
-    });
+    const user = await this.usersService.findOneByFields(
+      {
+        key,
+        value: profile[key],
+      },
+      ['role'],
+    );
 
     if (user) {
       return plainToInstance(User, user);

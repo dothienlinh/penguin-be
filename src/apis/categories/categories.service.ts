@@ -8,7 +8,7 @@ import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Category } from './entities/category.entity';
-import { IsNull, Not, Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import { ErrorHandler } from '@libs/utils/error-handler.utils';
 
 @Injectable()
@@ -96,6 +96,14 @@ export class CategoriesService {
   async findOne(id: number) {
     try {
       return await this.categoryRepository.findOneBy({ id });
+    } catch (error) {
+      this.handleError(error, 'Internal server error');
+    }
+  }
+
+  async findCategoriesByIds(ids: number[]) {
+    try {
+      return await this.categoryRepository.findBy({ id: In(ids) });
     } catch (error) {
       this.handleError(error, 'Internal server error');
     }

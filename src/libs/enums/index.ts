@@ -23,9 +23,30 @@ export enum RedisKey {
   OTP_REGISTER = 'OTP_REGISTER',
 }
 
+export enum PostStatus {
+  PENDING = 'pending',
+  APPROVED = 'approved',
+  REJECTED = 'rejected',
+}
+
+export enum UpdatePostStatus {
+  APPROVED = PostStatus.APPROVED,
+  REJECTED = PostStatus.REJECTED,
+}
+
+export enum ImageType {
+  THUMBNAIL = 'thumbnail',
+  IMAGE = 'image',
+}
+
 export enum LikeType {
   POST = 'post',
   COMMENT = 'comment',
+}
+
+export enum OrderBy {
+  DESC = 'DESC',
+  ASC = 'ASC',
 }
 
 export enum Permission {
@@ -40,6 +61,9 @@ export enum Permission {
   WRITE_POST = 'write_post',
   DELETE_POST = 'delete_post',
   UPDATE_POST = 'update_post',
+  UPDATE_STATUS_POST = 'update_status_post',
+  UPDATE_TO_DRAFT = 'update_to_draft',
+
   // COMMENT
   READ_COMMENT = 'read_comment',
   WRITE_COMMENT = 'write_comment',

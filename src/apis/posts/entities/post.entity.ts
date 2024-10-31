@@ -5,23 +5,39 @@ import { Like } from '@apis/likes/entities/like.entity';
 import { Share } from '@apis/shares/entities/share.entity';
 import { User } from '@apis/users/entities/user.entity';
 import { BaseEntity } from '@libs/base/base.entity';
+import { PostStatus } from '@libs/enums';
 import {
   Column,
   Entity,
   JoinColumn,
+  JoinTable,
   ManyToMany,
   ManyToOne,
   OneToMany,
-  JoinTable,
 } from 'typeorm';
 
 @Entity()
 export class Post extends BaseEntity {
+  @Column({ type: 'varchar', length: 255 })
+  title: string;
+
   @Column({ type: 'text' })
   content: string;
 
   @Column({ name: 'is_published', type: 'boolean', default: false })
   isPublished: boolean;
+
+  @Column({ type: 'enum', enum: PostStatus, default: PostStatus.PENDING })
+  status: PostStatus;
+
+  @Column({ type: 'boolean', default: true, name: 'is_draft' })
+  isDraft: boolean;
+
+  @OneToMany(() => Image, (image) => image.post, {
+    cascade: true,
+    onDelete: 'CASCADE',
+  })
+  thumbnail: Image;
 
   @OneToMany(() => Image, (image) => image.post, {
     cascade: true,
