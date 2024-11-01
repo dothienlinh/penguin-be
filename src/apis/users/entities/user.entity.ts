@@ -71,6 +71,15 @@ export class User extends BaseEntity {
   @Exclude()
   refreshToken: string;
 
+  @Column({ type: 'boolean', default: false, name: 'is_removed_by_admin' })
+  isRemovedByAdmin: boolean;
+
+  @Column({ type: 'text', nullable: true, name: 'removed_reason' })
+  removedReason: string;
+
+  @Column({ type: 'timestamp', nullable: true, name: 'removed_at' })
+  removedAt: Date;
+
   @OneToMany(() => Post, (post) => post.user, {
     cascade: true,
     onDelete: 'CASCADE',

@@ -1,8 +1,6 @@
 import { CategoriesService } from '@apis/categories/categories.service';
-import { Category } from '@apis/categories/entities/category.entity';
 import { CommentsService } from '@apis/comments/comments.service';
 import { AddCommentDto } from '@apis/comments/dto/add-comment.dto';
-import { Image } from '@apis/images/entities/image.entity';
 import { ImagesService } from '@apis/images/images.service';
 import { LikesService } from '@apis/likes/likes.service';
 import { SharesService } from '@apis/shares/shares.service';
@@ -50,6 +48,21 @@ export class PostsService {
     return ErrorHandler.handle(error, message);
   }
 
+  private async isExistPostAndCheckAccess(postId: number, user: User) {
+    const post = await this.postsRepository.findOne({
+      where: { id: postId },
+      relations: { user: true },
+    });
+
+    if (!post) {
+      throw new NotFoundException('Post not found');
+    }
+
+    AccessControl.checkUserAccess(user, post.user.id);
+
+    return post;
+  }
+
   async isPostExist(id: number) {
     const post = await this.postsRepository.findOneBy({ id });
     if (!post) {
@@ -77,50 +90,13 @@ export class PostsService {
 
   async create(createPostDto: CreatePostDto, user: User) {
     try {
-      const {
-        images = [],
-        thumbnail,
-        categoriesId,
-        ...dataPost
-      } = createPostDto;
-
-      let categories: Category[] = [];
-
-      if (categoriesId && categoriesId.length > 0) {
-        categories =
-          await this.categoriesService.findCategoriesByIds(categoriesId);
-      }
-
-      const post = this.postsRepository.create({
-        ...dataPost,
+      const createdPost = this.postsRepository.create({
+        ...createPostDto,
         user,
-        categories,
       });
-      const savedPost = await this.postsRepository.save(post);
+      const post = await this.postsRepository.save(createdPost);
 
-      const imagePromises = [];
-
-      if (images && images.length > 0) {
-        imagePromises.push(
-          this.imagesService.create(
-            images.map((image) => image.filename),
-            savedPost,
-            ImageType.IMAGE,
-          ),
-        );
-      }
-
-      if (thumbnail) {
-        imagePromises.push(
-          this.imagesService.createThumbnail(thumbnail.filename, savedPost),
-        );
-      }
-
-      if (imagePromises.length > 0) {
-        await Promise.all(imagePromises);
-      }
-
-      return { success: true };
+      return plainToInstance(Post, post);
     } catch (error) {
       this.handleError(error, 'Create post failed');
     }
@@ -241,30 +217,13 @@ export class PostsService {
     }
   }
 
-  async update(id: number, updatePostDto: UpdatePostDto) {
+  async update(id: number, updatePostDto: UpdatePostDto, user: User) {
     try {
-      const post = await this.findOne(id);
-      const { images, thumbnail, ...postData } = updatePostDto;
-
-      let imagesResult: Image[];
-      let thumbnailResult: Image;
-      if (images.length > 0 || thumbnail) {
-        [imagesResult, thumbnailResult] = await Promise.all([
-          images.length > 0 &&
-            this.imagesService.updateImages(
-              images.map((image) => image.filename),
-              post,
-            ),
-          thumbnail &&
-            this.imagesService.updateThumbnail(thumbnail.filename, post),
-        ]);
-      }
+      const post = await this.isExistPostAndCheckAccess(id, user);
 
       const updatedPost = await this.postsRepository.save({
         ...post,
-        ...postData,
-        images: imagesResult,
-        thumbnail: thumbnailResult,
+        ...updatePostDto,
       });
       return plainToInstance(Post, updatedPost);
     } catch (error) {
@@ -282,9 +241,9 @@ export class PostsService {
     }
   }
 
-  async restore(id: number) {
+  async restore(id: number, user: User) {
     try {
-      const post = await this.findOnePostAllRelations(id, true);
+      const post = await this.isExistPostAndCheckAccess(id, user);
       return await this.postsRepository.recover(post);
     } catch (error) {
       this.handleError(error, 'Restore post failed');
@@ -320,7 +279,7 @@ export class PostsService {
 
   async removeComment(postId: number, commentId: number, user: User) {
     try {
-      const post = await this.findOnePostNoRelations(postId);
+      const post = await this.isExistPostAndCheckAccess(postId, user);
       return this.commentsService.remove(commentId, post, user);
     } catch (error) {
       this.handleError(error, 'Remove comment failed');
@@ -329,7 +288,7 @@ export class PostsService {
 
   async restoreComment(postId: number, commentId: number, user: User) {
     try {
-      const post = await this.findOnePostAllRelations(postId);
+      const post = await this.isExistPostAndCheckAccess(postId, user);
       return this.commentsService.restore(commentId, post, user);
     } catch (error) {
       this.handleError(error, 'Restore comment failed');
@@ -476,12 +435,7 @@ export class PostsService {
 
   async updateToDraft(id: number, user: User) {
     try {
-      const post = await this.postsRepository.findOne({
-        where: { id },
-        relations: { user: true },
-      });
-
-      AccessControl.checkUserAccess(user, post.user.id);
+      const post = await this.isExistPostAndCheckAccess(id, user);
 
       if (post.isDraft === false) {
         throw new BadRequestException('Post is not a draft');
@@ -502,6 +456,21 @@ export class PostsService {
       });
     } catch (error) {
       this.handleError(error, 'Update to status post failed');
+    }
+  }
+
+  async uploadImagePost(
+    postId: number,
+    filename: string,
+    type: ImageType,
+    user: User,
+  ) {
+    try {
+      const post = await this.isExistPostAndCheckAccess(postId, user);
+
+      return this.imagesService.createImagePost(filename, post, type);
+    } catch (error) {
+      this.handleError(error, 'Upload image post failed');
     }
   }
 }

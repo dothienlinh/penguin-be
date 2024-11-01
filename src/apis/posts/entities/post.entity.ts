@@ -33,6 +33,15 @@ export class Post extends BaseEntity {
   @Column({ type: 'boolean', default: true, name: 'is_draft' })
   isDraft: boolean;
 
+  @Column({ type: 'boolean', default: false, name: 'is_removed_by_admin' })
+  isRemovedByAdmin: boolean;
+
+  @Column({ type: 'text', nullable: true, name: 'removed_reason' })
+  removedReason: string;
+
+  @Column({ type: 'timestamp', nullable: true, name: 'removed_at' })
+  removedAt: Date;
+
   @OneToMany(() => Image, (image) => image.post, {
     cascade: true,
     onDelete: 'CASCADE',
