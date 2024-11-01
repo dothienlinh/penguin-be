@@ -1,9 +1,12 @@
 import { AddCommentDto } from '@apis/comments/dto/add-comment.dto';
 import { User } from '@apis/users/entities/user.entity';
 import { Permissions } from '@libs/decorators/permissions.decorator';
+import { ResponseMessage } from '@libs/decorators/responseMessage.decorator';
 import { CurrentUser } from '@libs/decorators/user.decorator';
-import { Permission } from '@libs/enums';
+import { ImageType, Permission } from '@libs/enums';
+import { imageFileFilter } from '@libs/utils/file-filter.util';
 import {
+  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -12,18 +15,21 @@ import {
   Patch,
   Post,
   Query,
-  UploadedFiles,
+  UploadedFile,
   UseInterceptors,
   ValidationPipe,
 } from '@nestjs/common';
-import { FileFieldsInterceptor } from '@nestjs/platform-express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Express } from 'express';
+import { diskStorage } from 'multer';
+import { v4 as uuidv4 } from 'uuid';
 import { CreatePostDto } from './dto/create-post.dto';
-import { UpdatePostDto, UpdatePostStatus } from './dto/update-post.dto';
-import { PostsService } from './posts.service';
 import { ListPostDto } from './dto/list-post.dto';
 import { SearchPostDto } from './dto/search-post.dto';
+import { UpdatePostDto, UpdatePostStatus } from './dto/update-post.dto';
+import { UploadImagePostDto } from './dto/upload-image-post.dto';
+import { PostsService } from './posts.service';
 
 @ApiTags('Posts')
 @Controller('posts')
@@ -33,32 +39,51 @@ export class PostsController {
   @Permissions(Permission.READ_POST)
   @Post()
   @ApiOperation({ summary: 'Create post' })
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'images', maxCount: 10 },
-      { name: 'thumbnail', maxCount: 1 },
-    ]),
-  )
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    type: CreatePostDto,
-  })
   async create(
     @Body(new ValidationPipe({ transform: true }))
     createPostDto: CreatePostDto,
     @CurrentUser() user: User,
-    @UploadedFiles()
-    files: {
-      images?: Express.Multer.File[];
-      thumbnail?: Express.Multer.File[];
-    },
   ) {
-    return await this.postsService.create(
-      {
-        ...createPostDto,
-        images: files.images || [],
-        thumbnail: files.thumbnail?.[0],
+    return await this.postsService.create(createPostDto, user);
+  }
+
+  @Permissions(Permission.UPDATE_POST)
+  @Post('/:id/upload-images')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      fileFilter: imageFileFilter,
+      limits: {
+        fileSize: 5 * 1024 * 1024, // 5MB
       },
+      storage: diskStorage({
+        destination: './public/uploads',
+        filename: (req, file, cb) => {
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9) + '-' + uuidv4();
+          cb(null, `${uniqueSuffix}-${file.originalname}`);
+        },
+      }),
+    }),
+  )
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    type: UploadImagePostDto,
+  })
+  @ApiOperation({ summary: 'Upload image to post' })
+  @ResponseMessage('Uploaded image successfully')
+  async uploadImagePost(
+    @Param('id') id: number,
+    @Body() body: { type: ImageType },
+    @UploadedFile() file: Express.Multer.File,
+    @CurrentUser() user: User,
+  ) {
+    if (!file) {
+      throw new BadRequestException('File is required');
+    }
+    return await this.postsService.uploadImagePost(
+      +id,
+      file.filename,
+      body.type,
       user,
     );
   }
@@ -84,8 +109,8 @@ export class PostsController {
   @Permissions(Permission.UPDATE_POST)
   @Post(':id/restore')
   @ApiOperation({ summary: 'Restore post' })
-  async restore(@Param('id') id: number) {
-    return await this.postsService.restore(+id);
+  async restore(@Param('id') id: number, @CurrentUser() user: User) {
+    return await this.postsService.restore(+id, user);
   }
 
   @Permissions(Permission.UPDATE_COMMENT)
@@ -222,31 +247,13 @@ export class PostsController {
 
   @Permissions(Permission.UPDATE_POST)
   @Patch(':id')
-  @UseInterceptors(
-    FileFieldsInterceptor([
-      { name: 'images', maxCount: 10 },
-      { name: 'thumbnail', maxCount: 1 },
-    ]),
-  )
-  @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    type: UpdatePostDto,
-  })
   @ApiOperation({ summary: 'Update post' })
   async update(
     @Param('id') id: number,
     @Body() updatePostDto: UpdatePostDto,
-    @UploadedFiles()
-    files: {
-      images?: Express.Multer.File[];
-      thumbnail?: Express.Multer.File[];
-    },
+    @CurrentUser() user: User,
   ) {
-    return await this.postsService.update(+id, {
-      ...updatePostDto,
-      images: files.images || [],
-      thumbnail: files.thumbnail?.[0],
-    });
+    return await this.postsService.update(+id, updatePostDto, user);
   }
 
   @Permissions(Permission.DELETE_LIKE)

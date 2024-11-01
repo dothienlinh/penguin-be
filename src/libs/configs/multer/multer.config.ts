@@ -6,7 +6,7 @@ import {
 } from '@nestjs/platform-express';
 import { mkdir } from 'fs/promises';
 import { diskStorage } from 'multer';
-import { extname, join } from 'path';
+import { join } from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -23,8 +23,9 @@ export class MulterConfigService implements MulterOptionsFactory {
       storage: diskStorage({
         destination: join(this.rootPath, 'public', this.uploadFolder),
         filename: (req, file, cb) => {
-          const uniqueFilename = `${uuidv4()}${extname(file.originalname)}`;
-          cb(null, uniqueFilename);
+          const uniqueFilename =
+            Date.now() + '-' + Math.round(Math.random() * 1e9) + '-' + uuidv4();
+          cb(null, `${uniqueFilename}-${file.originalname}`);
         },
       }),
       fileFilter: (req, file, cb) => {

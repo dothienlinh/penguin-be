@@ -33,6 +33,18 @@ export class ImagesService {
     }
   }
 
+  async createImagePost(url: string, post: Post, type: ImageType) {
+    try {
+      return this.imagesRepository.create({
+        url,
+        post: { id: post.id },
+        type,
+      });
+    } catch (error) {
+      this.handleError(error, 'Create image post failed');
+    }
+  }
+
   async createThumbnail(url: string, post: Post) {
     const create = this.imagesRepository.create({
       url,
