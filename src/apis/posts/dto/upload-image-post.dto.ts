@@ -1,9 +1,13 @@
-import { IsEnum, IsNotEmpty } from 'class-validator';
-import { ImageType } from '@libs/enums';
-import { ApiProperty } from '@nestjs/swagger';
 import { UploadFileDto } from '@apis/upload/dto/upload-file.dto';
+import { ImageType } from '@libs/enums';
+import { ApiProperty, IntersectionType } from '@nestjs/swagger';
+import { IsEnum, IsNotEmpty } from 'class-validator';
+import { GetPostDto } from './get-post.dto';
 
-export class UploadImagePostDto extends UploadFileDto {
+export class UploadImagePostDto extends IntersectionType(
+  UploadFileDto,
+  GetPostDto,
+) {
   @ApiProperty({
     enum: ImageType,
     example: ImageType.THUMBNAIL,

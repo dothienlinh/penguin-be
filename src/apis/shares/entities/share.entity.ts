@@ -5,11 +5,17 @@ import { Entity, JoinColumn, ManyToOne } from 'typeorm';
 
 @Entity()
 export class Share extends BaseEntity {
-  @ManyToOne(() => Post, (post) => post.shares, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Post, (post) => post.shares, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
   @JoinColumn({ name: 'post_id' })
   post: Post;
 
-  @ManyToOne(() => User, (user) => user.shares, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.shares, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
   @JoinColumn({ name: 'user_id' })
   user: User;
 }

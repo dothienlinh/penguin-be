@@ -33,9 +33,6 @@ export class Post extends BaseEntity {
   @Column({ type: 'boolean', default: true, name: 'is_draft' })
   isDraft: boolean;
 
-  @Column({ type: 'boolean', default: false, name: 'is_removed_by_admin' })
-  isRemovedByAdmin: boolean;
-
   @Column({ type: 'text', nullable: true, name: 'removed_reason' })
   removedReason: string;
 
@@ -72,9 +69,16 @@ export class Post extends BaseEntity {
   })
   shares: Share[];
 
-  @ManyToOne(() => User, (user) => user.posts, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.posts, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
   @JoinColumn({ name: 'user_id' })
   user: User;
+
+  @ManyToOne(() => User, (user) => user.removedPosts)
+  @JoinColumn({ name: 'removed_by_admin_id' })
+  removedByAdmin: User;
 
   @ManyToMany(() => Category, (category) => category.posts, {
     cascade: true,

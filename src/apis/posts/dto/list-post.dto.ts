@@ -1,7 +1,8 @@
 import { PaginationDto } from '@libs/base/base.dto';
-import { OmitType } from '@nestjs/swagger';
+import { OmitType, IntersectionType } from '@nestjs/swagger';
+import { GetPostDto } from './get-post.dto';
 
-export class ListPostDto extends OmitType(PaginationDto, [
-  'from',
-  'to',
-] as const) {}
+export class ListPostDto extends IntersectionType(
+  OmitType(PaginationDto, ['from', 'to'] as const),
+  GetPostDto,
+) {}

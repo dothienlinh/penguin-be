@@ -7,13 +7,14 @@ import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
-import { In, Repository } from 'typeorm';
+import { In, IsNull, Not, Repository } from 'typeorm';
 import { CreateUserFacebookDto } from './dto/create-user-facebook.dto';
 import { CreateUserGoogleDto } from './dto/create-user-google.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { AccessControl } from '@libs/utils/access-control.util';
+import { DeleteUserDto, RestoreUserDto } from '@apis/admin/dto/action-user.dto';
 
 interface FindOneByFields {
   key: keyof User;
@@ -174,10 +175,9 @@ export class UsersService {
     try {
       const user = await this.usersRepository
         .createQueryBuilder('user')
-        .leftJoinAndSelect('user.posts', 'posts')
-        .leftJoinAndSelect('posts.images', 'images')
         .leftJoinAndSelect('user.role', 'role')
-        .leftJoinAndSelect('user.permissions', 'permissions')
+        .leftJoin('user.permissions', 'permissions')
+        .select(['user', 'role.id', 'role.name', 'permissions.name'])
         .where('user.id = :id', { id })
         .getOne();
 
@@ -185,7 +185,10 @@ export class UsersService {
         throw new NotFoundException('User not found');
       }
 
-      return plainToInstance(User, user);
+      return {
+        ...plainToInstance(User, user),
+        permissions: user.permissions.map((permission) => permission.name),
+      };
     } catch (error) {
       this.handleError(error, 'Get profile user failed');
     }
@@ -353,5 +356,56 @@ export class UsersService {
     }
   }
 
-  async getRanking() {}
+  async adminGetRemovedUsers() {
+    try {
+      return await this.usersRepository.find({
+        where: {
+          removedByAdmin: Not(IsNull()),
+          removedAt: Not(IsNull()),
+        },
+        relations: { removedByAdmin: true },
+      });
+    } catch (error) {
+      this.handleError(error, 'Admin get removed users failed');
+    }
+  }
+
+  async adminGetRemovedUserDetail(id: number) {
+    try {
+      return await this.usersRepository.findOne({
+        where: {
+          id,
+          removedByAdmin: Not(IsNull()),
+          removedAt: Not(IsNull()),
+        },
+        relations: { removedByAdmin: true },
+      });
+    } catch (error) {
+      this.handleError(error, 'Admin get removed user detail failed');
+    }
+  }
+
+  async adminRemoveUser(deleteUserDto: DeleteUserDto, user: User) {
+    try {
+      return await this.usersRepository.update(deleteUserDto.id, {
+        removedByAdmin: user,
+        removedReason: deleteUserDto.removedReason,
+        removedAt: new Date(),
+      });
+    } catch (error) {
+      this.handleError(error, 'Admin remove user failed');
+    }
+  }
+
+  async adminRestoreUser(restoreUserDto: RestoreUserDto) {
+    try {
+      return await this.usersRepository.update(restoreUserDto.id, {
+        removedByAdmin: null,
+        removedAt: null,
+        removedReason: null,
+      });
+    } catch (error) {
+      this.handleError(error, 'Admin restore user failed');
+    }
+  }
 }

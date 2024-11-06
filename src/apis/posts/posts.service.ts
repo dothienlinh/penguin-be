@@ -5,29 +5,21 @@ import { ImagesService } from '@apis/images/images.service';
 import { LikesService } from '@apis/likes/likes.service';
 import { SharesService } from '@apis/shares/shares.service';
 import { User } from '@apis/users/entities/user.entity';
-import {
-  ImageType,
-  LikeType,
-  OrderBy,
-  PostStatus,
-  UpdatePostStatus,
-} from '@libs/enums';
+import { ImageType, LikeType, OrderBy, PostStatus, Roles } from '@libs/enums';
 import { AccessControl } from '@libs/utils/access-control.util';
 import { ErrorHandler } from '@libs/utils/error-handler.utils';
-import {
-  BadRequestException,
-  Injectable,
-  Logger,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
-import { Repository } from 'typeorm';
+import { IsNull, Not, Repository } from 'typeorm';
 import { CreatePostDto } from './dto/create-post.dto';
 import { ListPostDto } from './dto/list-post.dto';
 import { SearchPostDto } from './dto/search-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { Post } from './entities/post.entity';
+import { GetPostDto } from './dto/get-post.dto';
+import { UploadImagePostDto } from './dto/upload-image-post.dto';
+import { DeletePostDto, RestorePostDto } from '@apis/admin/dto/action-post.dto';
 
 @Injectable()
 export class PostsService {
@@ -51,7 +43,11 @@ export class PostsService {
   private async isExistPostAndCheckAccess(postId: number, user: User) {
     const post = await this.postsRepository.findOne({
       where: { id: postId },
-      relations: { user: true },
+      relations: { user: true, images: true },
+      select: {
+        user: { id: true, username: true, avatar: true },
+        images: { id: true, url: true, type: true },
+      },
     });
 
     if (!post) {
@@ -92,11 +88,14 @@ export class PostsService {
     try {
       const createdPost = this.postsRepository.create({
         ...createPostDto,
-        user,
+        user: { id: user.id },
       });
       const post = await this.postsRepository.save(createdPost);
 
-      return plainToInstance(Post, post);
+      return {
+        ...plainToInstance(Post, post),
+        user: { id: user.id, username: user.username, avatar: user.avatar },
+      };
     } catch (error) {
       this.handleError(error, 'Create post failed');
     }
@@ -141,19 +140,49 @@ export class PostsService {
     };
   }
 
-  async findAll(query: ListPostDto) {
+  private whereCondition(
+    conditionsQuery: { key: string; value: any }[],
+    asTable: string,
+    user: User,
+    checkAccess: boolean,
+  ) {
+    const conditions: string[] = [];
+    const parameters: Record<string, boolean | string | number> = {};
+
+    conditionsQuery.forEach((condition) => {
+      if (condition.value !== undefined && condition.value !== null) {
+        conditions.push(`${asTable}.${condition.key} = :${condition.key}`);
+        parameters[condition.key] = condition.value;
+      }
+    });
+
+    if (checkAccess && user.role.name === Roles.USER) {
+      conditions.push(`${asTable}.user_id = :user_id`);
+      parameters.user_id = user.id;
+    }
+
+    return { conditions, parameters };
+  }
+
+  async findAll(query: ListPostDto, user: User) {
     try {
-      const { page, size, orderBy } = query;
+      const { page, size, orderBy, isDraft, isPublished, status } = query;
+      const checkAccess =
+        !isDraft || !isPublished || status !== PostStatus.APPROVED;
+
+      const { conditions, parameters } = this.whereCondition(
+        [
+          { key: 'is_draft', value: isDraft },
+          { key: 'status', value: status },
+          { key: 'is_published', value: isPublished },
+        ],
+        'post',
+        user,
+        checkAccess,
+      );
 
       const queryBuilder = this.createBasePostQuery(page, size, orderBy)
-        .where(
-          'post.is_draft = :is_draft AND post.status = :status AND post.is_published = :is_published',
-          {
-            is_draft: false,
-            status: PostStatus.APPROVED,
-            is_published: true,
-          },
-        )
+        .where(conditions.join(' AND '), parameters)
         .leftJoin('post.user', 'user')
         .addSelect(['user.id', 'user.username', 'user.avatar']);
 
@@ -177,6 +206,43 @@ export class PostsService {
     }
   }
 
+  async getDetailPost(id: number, query: GetPostDto, user: User) {
+    try {
+      const { isDraft, isPublished, status } = query;
+
+      const checkAccess =
+        isDraft === true ||
+        isPublished === false ||
+        (status !== undefined && status !== PostStatus.APPROVED);
+
+      const post = await this.postsRepository.findOne({
+        where: {
+          id,
+          ...(isDraft !== undefined && { isDraft }),
+          ...(isPublished !== undefined && { isPublished }),
+          ...(status !== undefined && { status }),
+        },
+        relations: { user: true, images: true },
+        select: {
+          user: { id: true, username: true, avatar: true },
+          images: { id: true, url: true, type: true },
+        },
+      });
+
+      if (!post) {
+        throw new NotFoundException('Post not found');
+      }
+
+      if (checkAccess) {
+        AccessControl.checkAdminOrUserAccess(user, post.user.id);
+      }
+
+      return plainToInstance(Post, post);
+    } catch (error) {
+      this.handleError(error, 'Get post detail failed');
+    }
+  }
+
   async findOnePostNoRelations(id: number) {
     try {
       const post = await this.postsRepository.findOneBy({ id });
@@ -186,24 +252,6 @@ export class PostsService {
       return post;
     } catch (error) {
       this.handleError(error, 'Get post no relations failed');
-    }
-  }
-
-  async myPosts(user: User, query: ListPostDto) {
-    try {
-      const { page, size, orderBy } = query;
-
-      const queryBuilder = this.createBasePostQuery(page, size, orderBy).where(
-        'post.user_id = :user_id AND post.is_draft = :is_draft',
-        {
-          user_id: user.id,
-          is_draft: false,
-        },
-      );
-
-      return await this.getPaginatedPosts(queryBuilder, page, size);
-    } catch (error) {
-      this.handleError(error, 'Get my posts failed');
     }
   }
 
@@ -381,25 +429,25 @@ export class PostsService {
 
   async searchPosts(query: SearchPostDto) {
     try {
-      const { page, size, orderBy, value } = query;
-      const searchValue = value || '';
+      const { page, size, orderBy, title } = query;
 
       const queryBuilder = this.postsRepository
         .createQueryBuilder('post')
         .distinct(true)
         .leftJoin('post.user', 'user')
         .addSelect(['user.id', 'user.username', 'user.avatar'])
+        .leftJoinAndSelect('post.images', 'images', 'images.type = :type', {
+          type: ImageType.THUMBNAIL,
+        })
         .where(
-          'post.is_draft = :is_draft AND post.status = :status AND post.is_published = :is_published',
+          'post.is_draft = :is_draft AND post.status = :status AND post.is_published = :is_published AND post.title ILIKE :query',
           {
             is_draft: false,
             status: PostStatus.APPROVED,
             is_published: true,
+            query: `%${title}%`,
           },
         )
-        .andWhere('post.title LIKE :query OR post.content LIKE :query', {
-          query: `%${searchValue}%`,
-        })
         .orderBy('post.created_at', orderBy)
         .limit(size)
         .offset((page - 1) * size);
@@ -410,67 +458,103 @@ export class PostsService {
     }
   }
 
-  async listMyPostDraft(user: User, query: ListPostDto) {
-    try {
-      const { page, size, orderBy } = query;
-
-      const queryBuilder = this.postsRepository
-        .createQueryBuilder('post')
-        .where('post.user_id = :user_id AND post.is_draft = :is_draft', {
-          user_id: user.id,
-          is_draft: true,
-        })
-        .leftJoinAndSelect('post.images', 'images', 'images.type = :type', {
-          type: ImageType.THUMBNAIL,
-        })
-        .orderBy('post.created_at', orderBy)
-        .limit(size)
-        .offset((page - 1) * size);
-
-      return await this.getPaginatedPosts(queryBuilder, page, size);
-    } catch (error) {
-      this.handleError(error, 'Get list my post draft failed');
-    }
-  }
-
-  async updateToDraft(id: number, user: User) {
-    try {
-      const post = await this.isExistPostAndCheckAccess(id, user);
-
-      if (post.isDraft === false) {
-        throw new BadRequestException('Post is not a draft');
-      }
-
-      return this.postsRepository.update(id, {
-        isDraft: false,
-      });
-    } catch (error) {
-      this.handleError(error, 'Update is draft post failed');
-    }
-  }
-
-  async updateToStatus(id: number, status: UpdatePostStatus) {
-    try {
-      return this.postsRepository.update(id, {
-        status: status as unknown as PostStatus,
-      });
-    } catch (error) {
-      this.handleError(error, 'Update to status post failed');
-    }
-  }
-
   async uploadImagePost(
     postId: number,
     filename: string,
-    type: ImageType,
+    body: UploadImagePostDto,
     user: User,
   ) {
     try {
       const post = await this.isExistPostAndCheckAccess(postId, user);
 
-      return this.imagesService.createImagePost(filename, post, type);
+      const { type, isPublished, isDraft, status } = body;
+      const parameters: Record<string, boolean | string | number> = {};
+
+      const isPublishedPost =
+        isPublished || isDraft || status === PostStatus.APPROVED;
+
+      if (isPublished !== undefined && isPublished !== null) {
+        parameters.isPublished = isPublished;
+      }
+
+      if (isDraft !== undefined && isDraft !== null) {
+        parameters.isDraft = isDraft;
+      }
+
+      if (status !== undefined && status !== null) {
+        parameters.status = status;
+      }
+
+      const [postUpdated, image] = await Promise.all([
+        isPublishedPost &&
+          this.postsRepository.save({ ...post, ...parameters }),
+        this.imagesService.createImagePost(filename, post, type),
+      ]);
+
+      return {
+        ...(isPublishedPost && plainToInstance(Post, postUpdated)),
+        image: image,
+      };
     } catch (error) {
       this.handleError(error, 'Upload image post failed');
     }
+  }
+
+  async deleteImage(postId: number, imageIds: number[], user: User) {
+    try {
+      const post = await this.isExistPostAndCheckAccess(postId, user);
+
+      return this.imagesService.deleteImage(imageIds, post);
+    } catch (error) {
+      this.handleError(error, 'Delete image post failed');
+    }
+  }
+
+  async adminGetRemovedPosts() {
+    try {
+      return await this.postsRepository.find({
+        where: {
+          status: PostStatus.REJECTED,
+          removedByAdmin: Not(IsNull()),
+          removedAt: Not(IsNull()),
+        },
+        relations: { removedByAdmin: true },
+      });
+    } catch (error) {
+      this.handleError(error, 'Admin get removed posts failed');
+    }
+  }
+
+  async adminGetRemovedPostDetail(id: number) {
+    try {
+      return await this.postsRepository.findOne({
+        where: { id, removedByAdmin: Not(IsNull()), removedAt: Not(IsNull()) },
+        relations: { removedByAdmin: true },
+      });
+    } catch (error) {
+      this.handleError(error, 'Admin get removed post detail failed');
+    }
+  }
+
+  async adminRemovePost(deletePostDto: DeletePostDto, user: User) {
+    try {
+      return await this.postsRepository.update(deletePostDto.id, {
+        status: PostStatus.REJECTED,
+        removedReason: deletePostDto.removedReason,
+        removedByAdmin: user,
+        removedAt: new Date(),
+      });
+    } catch (error) {
+      this.handleError(error, 'Admin remove post failed');
+    }
+  }
+
+  async adminRestorePost(restorePostDto: RestorePostDto) {
+    return await this.postsRepository.update(restorePostDto.id, {
+      removedByAdmin: null,
+      removedAt: null,
+      status: PostStatus.APPROVED,
+      removedReason: null,
+    });
   }
 }

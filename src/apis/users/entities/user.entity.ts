@@ -71,14 +71,17 @@ export class User extends BaseEntity {
   @Exclude()
   refreshToken: string;
 
-  @Column({ type: 'boolean', default: false, name: 'is_removed_by_admin' })
-  isRemovedByAdmin: boolean;
-
   @Column({ type: 'text', nullable: true, name: 'removed_reason' })
   removedReason: string;
 
   @Column({ type: 'timestamp', nullable: true, name: 'removed_at' })
   removedAt: Date;
+
+  @OneToMany(() => User, (user) => user.removedByAdmin)
+  removedUsers: User[];
+
+  @OneToMany(() => Post, (post) => post.removedByAdmin)
+  removedPosts: Post[];
 
   @OneToMany(() => Post, (post) => post.user, {
     cascade: true,
@@ -112,6 +115,9 @@ export class User extends BaseEntity {
 
   @ManyToOne(() => Role, (role) => role.users)
   role: Role;
+
+  @ManyToOne(() => User, (user) => user.removedUsers)
+  removedByAdmin: User;
 
   @ManyToMany(() => Permission, (permission) => permission.users, {
     cascade: true,

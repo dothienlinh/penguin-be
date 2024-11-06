@@ -6,5 +6,5 @@ export class SearchPostDto extends ListPostDto {
   @IsOptional()
   @IsString()
   @ApiProperty({ description: 'Search value', default: '' })
-  value?: string = '';
+  title?: string = '';
 }

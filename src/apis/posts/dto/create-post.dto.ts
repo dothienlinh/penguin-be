@@ -1,31 +1,18 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsOptional, IsString } from 'class-validator';
 
 export class CreatePostDto {
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @ApiProperty({
     example: 'This is a test post',
   })
-  title: string;
+  title?: string;
 
   @IsString()
-  @IsNotEmpty()
+  @IsOptional()
   @ApiProperty({
     example: 'This is a test post',
   })
-  content: string;
-
-  // @IsOptional()
-  // @Transform(({ value }) => {
-  //   if (typeof +value === 'number' && !isNaN(+value)) {
-  //     return [+value];
-  //   }
-
-  //   return value.split(',').map((v: string) => +v);
-  // })
-  // @IsArray()
-  // @IsNumber({}, { each: true })
-  // @ArrayNotEmpty()
-  // categoriesId?: number[];
+  content?: string;
 }

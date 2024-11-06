@@ -3,7 +3,7 @@ import { User } from '@apis/users/entities/user.entity';
 import { Permissions } from '@libs/decorators/permissions.decorator';
 import { ResponseMessage } from '@libs/decorators/responseMessage.decorator';
 import { CurrentUser } from '@libs/decorators/user.decorator';
-import { ImageType, Permission } from '@libs/enums';
+import { Permission } from '@libs/enums';
 import { imageFileFilter } from '@libs/utils/file-filter.util';
 import {
   BadRequestException,
@@ -27,16 +27,17 @@ import { v4 as uuidv4 } from 'uuid';
 import { CreatePostDto } from './dto/create-post.dto';
 import { ListPostDto } from './dto/list-post.dto';
 import { SearchPostDto } from './dto/search-post.dto';
-import { UpdatePostDto, UpdatePostStatus } from './dto/update-post.dto';
+import { UpdatePostDto } from './dto/update-post.dto';
 import { UploadImagePostDto } from './dto/upload-image-post.dto';
 import { PostsService } from './posts.service';
+import { GetPostDto } from './dto/get-post.dto';
+import { DeletePostImagesDto } from './dto/dalete-post-images.dto';
 
 @ApiTags('Posts')
 @Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
-  @Permissions(Permission.READ_POST)
   @Post()
   @ApiOperation({ summary: 'Create post' })
   async create(
@@ -66,14 +67,12 @@ export class PostsController {
     }),
   )
   @ApiConsumes('multipart/form-data')
-  @ApiBody({
-    type: UploadImagePostDto,
-  })
+  @ApiBody({ type: UploadImagePostDto })
   @ApiOperation({ summary: 'Upload image to post' })
   @ResponseMessage('Uploaded image successfully')
   async uploadImagePost(
     @Param('id') id: number,
-    @Body() body: { type: ImageType },
+    @Body() body: UploadImagePostDto,
     @UploadedFile() file: Express.Multer.File,
     @CurrentUser() user: User,
   ) {
@@ -83,7 +82,7 @@ export class PostsController {
     return await this.postsService.uploadImagePost(
       +id,
       file.filename,
-      body.type,
+      body,
       user,
     );
   }
@@ -152,21 +151,17 @@ export class PostsController {
     return await this.postsService.restoreShare(user, +id, +shareId);
   }
 
-  @Permissions(Permission.READ_POST)
+  @Permissions(Permission.WRITE_SHARE)
+  @Post(':id/share')
+  @ApiOperation({ summary: 'Share a post' })
+  async sharePost(@Param('id') id: number, @CurrentUser() user: User) {
+    return await this.postsService.sharePost(user, +id);
+  }
+
   @Get('search')
   @ApiOperation({ summary: 'Search posts' })
   async searchPosts(@Query() query: SearchPostDto) {
     return await this.postsService.searchPosts(query);
-  }
-
-  @Permissions(Permission.READ_POST)
-  @Get('my-drafts')
-  @ApiOperation({ summary: 'List my post drafts' })
-  async listMyPostDraft(
-    @CurrentUser() user: User,
-    @Query() query: ListPostDto,
-  ) {
-    return await this.postsService.listMyPostDraft(user, query);
   }
 
   @Permissions(Permission.READ_SHARE)
@@ -190,13 +185,6 @@ export class PostsController {
     return await this.postsService.listCommentPost(+id);
   }
 
-  @Permissions(Permission.READ_POST)
-  @Get('my-posts')
-  @ApiOperation({ summary: 'List my posts' })
-  async myPosts(@CurrentUser() user: User, @Query() query: ListPostDto) {
-    return await this.postsService.myPosts(user, query);
-  }
-
   @Permissions(Permission.READ_LIKE)
   @Get('list-user-liked-post/:id')
   @ApiOperation({ summary: 'List user liked post' })
@@ -204,18 +192,20 @@ export class PostsController {
     return await this.postsService.listUserLikedPost(+id);
   }
 
-  @Permissions(Permission.READ_POST)
   @Get()
   @ApiOperation({ summary: 'List all posts' })
-  async findAll(@Query() query: ListPostDto) {
-    return await this.postsService.findAll(query);
+  async findAll(@Query() query: ListPostDto, @CurrentUser() user: User) {
+    return await this.postsService.findAll(query, user);
   }
 
-  @Permissions(Permission.READ_POST)
   @Get(':id')
   @ApiOperation({ summary: 'Get post by id' })
-  async findOne(@Param('id') id: number) {
-    return await this.postsService.findOne(+id);
+  async getDetailPost(
+    @Param('id') id: number,
+    @Query() query: GetPostDto,
+    @CurrentUser() user: User,
+  ) {
+    return await this.postsService.getDetailPost(+id, query, user);
   }
 
   @Permissions(Permission.READ_COMMENT)
@@ -226,23 +216,6 @@ export class PostsController {
     @Param('commentId') commentId: number,
   ) {
     return await this.postsService.listReplyComment(+id, +commentId);
-  }
-
-  @Permissions(Permission.UPDATE_STATUS_POST)
-  @Patch(':id/status')
-  @ApiOperation({ summary: 'Update status of post' })
-  async updateStatus(
-    @Param('id') id: number,
-    @Body() updatePostStatus: UpdatePostStatus,
-  ) {
-    return await this.postsService.updateToStatus(+id, updatePostStatus.status);
-  }
-
-  @Permissions(Permission.UPDATE_TO_DRAFT)
-  @Patch(':id/draft')
-  @ApiOperation({ summary: 'Update to draft of post' })
-  async updateToDraft(@Param('id') id: number, @CurrentUser() user: User) {
-    return await this.postsService.updateToDraft(+id, user);
   }
 
   @Permissions(Permission.UPDATE_POST)
@@ -281,13 +254,6 @@ export class PostsController {
     return await this.postsService.removeComment(+id, +commentId, user);
   }
 
-  @Permissions(Permission.WRITE_SHARE)
-  @Post(':id/share')
-  @ApiOperation({ summary: 'Share a post' })
-  async sharePost(@Param('id') id: number, @CurrentUser() user: User) {
-    return await this.postsService.sharePost(user, +id);
-  }
-
   @Permissions(Permission.DELETE_SHARE)
   @Delete(':id/shares/:shareId')
   @ApiOperation({ summary: 'Soft delete a share' })
@@ -297,5 +263,16 @@ export class PostsController {
     @CurrentUser() user: User,
   ) {
     return await this.postsService.unsharePost(user, +id, +shareId);
+  }
+
+  @Permissions(Permission.UPDATE_POST)
+  @Delete(':id/images')
+  @ApiOperation({ summary: 'Delete image of post' })
+  async deleteImage(
+    @Param('id') id: number,
+    @Body() body: DeletePostImagesDto,
+    @CurrentUser() user: User,
+  ) {
+    return await this.postsService.deleteImage(+id, body.imageIds, user);
   }
 }

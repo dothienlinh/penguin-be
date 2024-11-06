@@ -50,6 +50,16 @@ export enum OrderBy {
 }
 
 export enum Permission {
+  // ADMIN
+  ADMIN_REMOVE_POST = 'admin_remove_post',
+  ADMIN_RESTORE_POST = 'admin_restore_post',
+  ADMIN_REMOVE_USER = 'admin_remove_user',
+  ADMIN_RESTORE_USER = 'admin_restore_user',
+  ADMIN_GET_REMOVED_POSTS = 'admin_get_removed_posts',
+  ADMIN_GET_REMOVED_POST_DETAIL = 'admin_get_removed_post_detail',
+  ADMIN_GET_REMOVED_USER_DETAIL = 'admin_get_removed_user_detail',
+  ADMIN_GET_REMOVED_USERS = 'admin_get_removed_users',
+
   // USER
   READ_USER = 'read_user',
   WRITE_USER = 'write_user',
@@ -57,12 +67,12 @@ export enum Permission {
   UPDATE_USER = 'update_user',
 
   // POST
-  READ_POST = 'read_post',
   WRITE_POST = 'write_post',
   DELETE_POST = 'delete_post',
   UPDATE_POST = 'update_post',
   UPDATE_STATUS_POST = 'update_status_post',
   UPDATE_TO_DRAFT = 'update_to_draft',
+  READ_PENDING_POST = 'read_pending_post',
 
   // COMMENT
   READ_COMMENT = 'read_comment',

@@ -30,7 +30,18 @@ export const FILE_TYPES = [
   'audio/wav',
 ];
 
-export const IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/jpg'];
+export const IMAGE_TYPES = [
+  'image/jpeg',
+  'image/jpg',
+  'image/png',
+  'image/gif',
+  'image/bmp',
+  'image/webp',
+  'image/svg+xml',
+  'image/tiff',
+  'image/heic',
+  'image/heif',
+];
 
 export const UPLOAD_FOLDER = 'uploads';
 
@@ -42,7 +53,6 @@ export const PERMISSIONS_ADMIN_ONLY = [
   Permission.READ_USER,
   Permission.WRITE_USER,
   Permission.DELETE_USER,
-  Permission.READ_POST,
   Permission.WRITE_POST,
   Permission.DELETE_POST,
   Permission.READ_COMMENT,
@@ -61,18 +71,27 @@ export const PERMISSIONS_ADMIN_ONLY = [
   Permission.WRITE_IMAGE,
   Permission.DELETE_IMAGE,
   Permission.UPDATE_STATUS_POST,
+  Permission.READ_PENDING_POST,
+  Permission.ADMIN_REMOVE_POST,
+  Permission.ADMIN_RESTORE_POST,
+  Permission.ADMIN_REMOVE_USER,
+  Permission.ADMIN_RESTORE_USER,
+  Permission.ADMIN_GET_REMOVED_POSTS,
+  Permission.ADMIN_GET_REMOVED_USERS,
+  Permission.ADMIN_GET_REMOVED_POST_DETAIL,
+  Permission.ADMIN_GET_REMOVED_USER_DETAIL,
 ];
 
 export const PERMISSIONS_USER_ONLY = [
   Permission.READ_USER,
   Permission.WRITE_USER,
   Permission.DELETE_USER,
-  Permission.READ_POST,
   Permission.READ_COMMENT,
   Permission.READ_SHARE,
   Permission.READ_CHAT,
   Permission.READ_IMAGE,
   Permission.UPDATE_TO_DRAFT,
+  Permission.UPDATE_POST,
 ];
 
 export const REGEX_USERNAME = /^[a-zA-Z0-9_]{3,20}$/;

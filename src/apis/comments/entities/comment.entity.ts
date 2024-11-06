@@ -28,11 +28,17 @@ export class Comment extends BaseEntity {
   @JoinColumn({ name: 'parent_comment_id' })
   parentComment: Comment;
 
-  @ManyToOne(() => User, (user) => user.comments, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.comments, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @ManyToOne(() => Post, (post) => post.comments, { onDelete: 'CASCADE' })
+  @ManyToOne(() => Post, (post) => post.comments, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
   @JoinColumn({ name: 'post_id' })
   post: Post;
 }

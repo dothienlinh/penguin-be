@@ -16,19 +16,22 @@ export class Like extends BaseEntity {
   @Column({ name: 'target_type', type: 'enum', enum: LikeType })
   targetType: LikeType;
 
-  @ManyToOne(() => User, (user) => user.likes, { onDelete: 'CASCADE' })
+  @ManyToOne(() => User, (user) => user.likes, {
+    onDelete: 'CASCADE',
+    nullable: false,
+  })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
   @ManyToOne(() => Post, (post) => post.likes, {
-    nullable: true,
+    nullable: false,
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'post_id' })
   post: Post;
 
   @ManyToOne(() => Comment, (comment) => comment.likes, {
-    nullable: true,
+    nullable: false,
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'comment_id' })
