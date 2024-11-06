@@ -130,7 +130,7 @@ export class AuthController {
     return await this.authService.googleLoginCallback(user, res);
   }
 
-  @Get('profile')
+  @Get('me')
   getProfile(@Req() req) {
     return req.user;
   }

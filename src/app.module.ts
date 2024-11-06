@@ -1,3 +1,4 @@
+import { AdminModule } from '@apis/admin/admin.module';
 import { AuthModule } from '@apis/auth/auth.module';
 import { CategoriesModule } from '@apis/categories/categories.module';
 import { ChatsModule } from '@apis/chats/chats.module';
@@ -48,6 +49,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     PermissionsModule,
     CategoriesModule,
     DatabasesModule,
+    AdminModule,
   ],
   providers: [
     {

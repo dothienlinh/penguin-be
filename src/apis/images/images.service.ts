@@ -3,8 +3,9 @@ import { ImageType } from '@libs/enums';
 import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { Injectable, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 import { Image } from './entities/image.entity';
+import { plainToInstance } from 'class-transformer';
 
 @Injectable()
 export class ImagesService {
@@ -35,11 +36,15 @@ export class ImagesService {
 
   async createImagePost(url: string, post: Post, type: ImageType) {
     try {
-      return this.imagesRepository.create({
-        url,
-        post: { id: post.id },
-        type,
-      });
+      const image = await this.imagesRepository
+        .create({
+          url,
+          post: { id: post.id },
+          type,
+        })
+        .save();
+
+      return plainToInstance(Image, image);
     } catch (error) {
       this.handleError(error, 'Create image post failed');
     }
@@ -72,5 +77,16 @@ export class ImagesService {
       type: ImageType.THUMBNAIL,
     });
     return await this.imagesRepository.save(update);
+  }
+
+  async deleteImage(ids: number[], post: Post) {
+    try {
+      return await this.imagesRepository.delete({
+        id: In(ids),
+        post: { id: post.id },
+      });
+    } catch (error) {
+      this.handleError(error, 'Delete image failed');
+    }
   }
 }
