@@ -11,8 +11,13 @@ export class FacebookAuthGuard extends AuthGuard('facebook') {
       return null;
     }
 
-    if (err || !user) {
-      throw err || new UnauthorizedException();
+    if (err) {
+      console.error('Facebook auth error:', err);
+      throw err;
+    }
+
+    if (!user) {
+      throw new UnauthorizedException('Authentication failed');
     }
 
     return user;

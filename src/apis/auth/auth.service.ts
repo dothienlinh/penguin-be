@@ -107,18 +107,31 @@ export class AuthService {
   }
 
   async signup(createUserDto: CreateUserDto) {
-    const { otpCode, email } = createUserDto;
-    const otpCodeRedis = await this.redisService.get(
-      `${RedisKey.OTP_REGISTER}:${email}`,
-    );
+    try {
+      const { otpCode, email, username } = createUserDto;
+      const user = await this.usersService.findOneByFields({
+        key: 'username',
+        value: username,
+      });
 
-    if (otpCode !== otpCodeRedis) {
-      throw new BadRequestException('Invalid OTP code');
+      if (user) {
+        throw new BadRequestException('Username already exists');
+      }
+
+      const otpCodeRedis = await this.redisService.get(
+        `${RedisKey.OTP_REGISTER}:${email}`,
+      );
+
+      if (otpCode !== otpCodeRedis) {
+        throw new BadRequestException('Invalid OTP code');
+      }
+
+      await this.redisService.del(`${RedisKey.OTP_REGISTER}:${email}`);
+
+      return await this.usersService.create(createUserDto);
+    } catch (error) {
+      this.handleError(error, 'Signup failed');
     }
-
-    await this.redisService.del(`${RedisKey.OTP_REGISTER}:${email}`);
-
-    return await this.usersService.create(createUserDto);
   }
 
   async logout(id: number, response: Response) {

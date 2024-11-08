@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiPropertyOptional, OmitType } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
 import { IsIn, IsInt, IsOptional, IsPositive, Max } from 'class-validator';
 import { OrderBy } from '@libs/enums';
@@ -43,3 +43,7 @@ export class PaginationDto extends TimeDto {
   @IsOptional()
   size?: number = 10;
 }
+
+export class QueryListDto extends OmitType(PaginationDto, ['from', 'to']) {}
+
+export class QueryListDtoAndTime extends PaginationDto {}

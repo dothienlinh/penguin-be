@@ -3,18 +3,24 @@ import { RolesService } from '@apis/roles/roles.service';
 import { Roles } from '@libs/enums';
 import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { hashPassword } from '@libs/utils/password.utils';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  ConflictException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
-import { In, IsNull, Not, Repository } from 'typeorm';
+import { In, IsNull, Not, Repository, SelectQueryBuilder } from 'typeorm';
 import { CreateUserFacebookDto } from './dto/create-user-facebook.dto';
 import { CreateUserGoogleDto } from './dto/create-user-google.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
-import { AccessControl } from '@libs/utils/access-control.util';
 import { DeleteUserDto, RestoreUserDto } from '@apis/admin/dto/action-user.dto';
+import { QueryListDto } from '@libs/base/base.dto';
+import { UPLOAD_FOLDER } from '@libs/constants';
 
 interface FindOneByFields {
   key: keyof User;
@@ -52,6 +58,25 @@ export class UsersService {
       })
       .save();
     return plainToInstance(User, user);
+  }
+
+  private async getPaginatedUsers(
+    queryBuilder: SelectQueryBuilder<User>,
+    page: number,
+    size: number,
+  ) {
+    const [users, total] = await queryBuilder.getManyAndCount();
+    const totalPage = Math.ceil(total / size);
+
+    return {
+      result: plainToInstance(User, users),
+      meta: {
+        totalPage,
+        currentPage: page,
+        pageSize: size,
+        totalRecords: total,
+      },
+    };
   }
 
   async isExistUser<K extends keyof User>(key: K, value: User[K]) {
@@ -101,6 +126,20 @@ export class UsersService {
       return user || null;
     } catch (error) {
       this.handleError(error, 'Find user by fields failed');
+    }
+  }
+
+  async findOneByUsername(username: string) {
+    try {
+      const user = await this.usersRepository
+        .createQueryBuilder('user')
+        .where('user.username = :username', { username })
+        .getOne();
+
+      if (!user) throw new NotFoundException('User not found');
+      return plainToInstance(User, user);
+    } catch (error) {
+      this.handleError(error, 'Find user by username failed');
     }
   }
 
@@ -309,13 +348,42 @@ export class UsersService {
     }
   }
 
-  async update(id: number, updateUserDto: UpdateUserDto, user: User) {
+  async update(
+    updateUserDto: UpdateUserDto,
+    avatarUrl: string | null,
+    user: User,
+  ) {
     try {
-      AccessControl.checkUserAccess(user, id);
+      const { username, ...rest } = updateUserDto;
 
-      await this.findOneById(id);
-      const updatedUser = await this.usersRepository.update(+id, updateUserDto);
-      return plainToInstance(User, updatedUser);
+      const isExistUser = await this.usersRepository.findOne({
+        where: { username },
+      });
+
+      if (isExistUser && isExistUser.id !== user.id) {
+        throw new ConflictException('Username already exists');
+      }
+
+      const updateData: Partial<User> = {
+        ...rest,
+        avatar: avatarUrl,
+        username,
+      };
+
+      if (avatarUrl) {
+        const fullUrlAvatar = `${this.configService.getOrThrow<string>(
+          'BACKEND_URL',
+        )}/${UPLOAD_FOLDER}/${avatarUrl}`;
+        updateData.avatar = fullUrlAvatar;
+      } else {
+        delete updateData.avatar;
+      }
+
+      await this.usersRepository.update(user.id, {
+        ...updateData,
+      });
+
+      return updateData;
     } catch (error) {
       this.handleError(error, 'Update user failed');
     }
@@ -356,15 +424,20 @@ export class UsersService {
     }
   }
 
-  async adminGetRemovedUsers() {
+  async adminGetRemovedUsers(query: QueryListDto) {
     try {
-      return await this.usersRepository.find({
-        where: {
-          removedByAdmin: Not(IsNull()),
-          removedAt: Not(IsNull()),
-        },
-        relations: { removedByAdmin: true },
-      });
+      const { page, size, orderBy } = query;
+
+      const queryBuilder = this.usersRepository
+        .createQueryBuilder('user')
+        .where(
+          'user.removed_by_admin_id IS NOT NULL AND user.removed_at IS NOT NULL',
+        )
+        .orderBy('user.removed_at', orderBy)
+        .limit(size)
+        .offset((page - 1) * size);
+
+      return this.getPaginatedUsers(queryBuilder, page, size);
     } catch (error) {
       this.handleError(error, 'Admin get removed users failed');
     }
@@ -406,6 +479,21 @@ export class UsersService {
       });
     } catch (error) {
       this.handleError(error, 'Admin restore user failed');
+    }
+  }
+
+  async adminGetRemovedUsersByUser(query: QueryListDto) {
+    try {
+      const { page, size, orderBy } = query;
+
+      return await this.usersRepository.find({
+        where: { deletedAt: Not(IsNull()) },
+        order: { deletedAt: orderBy },
+        take: size,
+        skip: (page - 1) * size,
+      });
+    } catch (error) {
+      this.handleError(error, 'Admin get removed users by user failed');
     }
   }
 }

@@ -12,6 +12,7 @@ import { Exclude } from 'class-transformer';
 import {
   Column,
   Entity,
+  JoinColumn,
   JoinTable,
   ManyToMany,
   ManyToOne,
@@ -27,7 +28,7 @@ export class User extends BaseEntity {
   @Exclude()
   password: string;
 
-  @Column({ type: 'varchar', name: 'username' })
+  @Column({ type: 'varchar', name: 'username', unique: true })
   username: string;
 
   @Column({ type: 'text', nullable: true })
@@ -66,6 +67,12 @@ export class User extends BaseEntity {
     name: 'google_id',
   })
   googleId: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'bio' })
+  bio: string;
+
+  @Column({ type: 'varchar', length: 255, nullable: true, name: 'address' })
+  address: string;
 
   @Column({ type: 'text', nullable: true, name: 'refresh_token' })
   @Exclude()
@@ -114,9 +121,11 @@ export class User extends BaseEntity {
   receivedMessages: Message[];
 
   @ManyToOne(() => Role, (role) => role.users)
+  @JoinColumn({ name: 'role_id' })
   role: Role;
 
   @ManyToOne(() => User, (user) => user.removedUsers)
+  @JoinColumn({ name: 'removed_by_admin_id' })
   removedByAdmin: User;
 
   @ManyToMany(() => Permission, (permission) => permission.users, {

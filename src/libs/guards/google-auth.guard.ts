@@ -11,8 +11,13 @@ export class GoogleAuthGuard extends AuthGuard('google') {
       return null;
     }
 
-    if (err || !user) {
-      throw err || new UnauthorizedException();
+    if (err) {
+      console.error('Google auth error:', err);
+      throw err;
+    }
+
+    if (!user) {
+      throw new UnauthorizedException('Authentication failed');
     }
 
     return user;

@@ -4,7 +4,6 @@ import { Permissions } from '@libs/decorators/permissions.decorator';
 import { ResponseMessage } from '@libs/decorators/responseMessage.decorator';
 import { CurrentUser } from '@libs/decorators/user.decorator';
 import { Permission } from '@libs/enums';
-import { imageFileFilter } from '@libs/utils/file-filter.util';
 import {
   BadRequestException,
   Body,
@@ -19,19 +18,17 @@ import {
   UseInterceptors,
   ValidationPipe,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Express } from 'express';
-import { diskStorage } from 'multer';
-import { v4 as uuidv4 } from 'uuid';
 import { CreatePostDto } from './dto/create-post.dto';
-import { ListPostDto } from './dto/list-post.dto';
+import { ListPostDeleteDto, ListPostDto } from './dto/list-post.dto';
 import { SearchPostDto } from './dto/search-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { UploadImagePostDto } from './dto/upload-image-post.dto';
 import { PostsService } from './posts.service';
 import { GetPostDto } from './dto/get-post.dto';
 import { DeletePostImagesDto } from './dto/dalete-post-images.dto';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Posts')
 @Controller('posts')
@@ -50,22 +47,7 @@ export class PostsController {
 
   @Permissions(Permission.UPDATE_POST)
   @Post('/:id/upload-images')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      fileFilter: imageFileFilter,
-      limits: {
-        fileSize: 5 * 1024 * 1024, // 5MB
-      },
-      storage: diskStorage({
-        destination: './public/uploads',
-        filename: (req, file, cb) => {
-          const uniqueSuffix =
-            Date.now() + '-' + Math.round(Math.random() * 1e9) + '-' + uuidv4();
-          cb(null, `${uniqueSuffix}-${file.originalname}`);
-        },
-      }),
-    }),
-  )
+  @UseInterceptors(FileInterceptor('file'))
   @ApiConsumes('multipart/form-data')
   @ApiBody({ type: UploadImagePostDto })
   @ApiOperation({ summary: 'Upload image to post' })
@@ -106,14 +88,14 @@ export class PostsController {
   }
 
   @Permissions(Permission.UPDATE_POST)
-  @Post(':id/restore')
+  @Patch(':id/restore')
   @ApiOperation({ summary: 'Restore post' })
   async restore(@Param('id') id: number, @CurrentUser() user: User) {
     return await this.postsService.restore(+id, user);
   }
 
   @Permissions(Permission.UPDATE_COMMENT)
-  @Post(':id/restore-comment/:commentId')
+  @Patch(':id/restore-comment/:commentId')
   @ApiOperation({ summary: 'Restore comment of post' })
   async restoreComment(
     @Param('id') id: number,
@@ -141,7 +123,7 @@ export class PostsController {
   }
 
   @Permissions(Permission.UPDATE_SHARE)
-  @Post(':id/shares/:shareId/restore')
+  @Patch(':id/shares/:shareId/restore')
   @ApiOperation({ summary: 'Restore a soft deleted share' })
   async restoreShare(
     @Param('id') id: number,
@@ -190,6 +172,15 @@ export class PostsController {
   @ApiOperation({ summary: 'List user liked post' })
   async listUserLikedPost(@Param('id') id: number) {
     return await this.postsService.listUserLikedPost(+id);
+  }
+
+  @Get('deleted')
+  @ApiOperation({ summary: 'Get deleted posts of current user' })
+  async getDeletedPosts(
+    @Query() query: ListPostDeleteDto,
+    @CurrentUser() user: User,
+  ) {
+    return await this.postsService.getDeletedPosts(query, user);
   }
 
   @Get()
@@ -274,5 +265,18 @@ export class PostsController {
     @CurrentUser() user: User,
   ) {
     return await this.postsService.deleteImage(+id, body.imageIds, user);
+  }
+
+  @Permissions(
+    Permission.PERMANENTLY_DELETE_POST,
+    Permission.USER_HAS_PERMISSION,
+  )
+  @Delete(':id/draft')
+  @ApiOperation({ summary: 'Permanently delete draft post' })
+  async permanentlyDeleteDraftPost(
+    @Param('id') id: number,
+    @CurrentUser() user: User,
+  ) {
+    return await this.postsService.permanentlyDeleteDraftPost(+id, user);
   }
 }

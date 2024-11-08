@@ -8,18 +8,24 @@ import { User } from '@apis/users/entities/user.entity';
 import { ImageType, LikeType, OrderBy, PostStatus, Roles } from '@libs/enums';
 import { AccessControl } from '@libs/utils/access-control.util';
 import { ErrorHandler } from '@libs/utils/error-handler.utils';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  Logger,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
-import { IsNull, Not, Repository } from 'typeorm';
+import { IsNull, Not, Repository, SelectQueryBuilder } from 'typeorm';
 import { CreatePostDto } from './dto/create-post.dto';
-import { ListPostDto } from './dto/list-post.dto';
+import { ListPostDeleteDto, ListPostDto } from './dto/list-post.dto';
 import { SearchPostDto } from './dto/search-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { Post } from './entities/post.entity';
 import { GetPostDto } from './dto/get-post.dto';
 import { UploadImagePostDto } from './dto/upload-image-post.dto';
 import { DeletePostDto, RestorePostDto } from '@apis/admin/dto/action-post.dto';
+import { QueryListDto } from '@libs/base/base.dto';
 
 @Injectable()
 export class PostsService {
@@ -122,7 +128,7 @@ export class PostsService {
   }
 
   private async getPaginatedPosts(
-    queryBuilder: any,
+    queryBuilder: SelectQueryBuilder<Post>,
     page: number,
     size: number,
   ) {
@@ -189,6 +195,37 @@ export class PostsService {
       return await this.getPaginatedPosts(queryBuilder, page, size);
     } catch (error) {
       this.handleError(error, 'Get posts failed');
+    }
+  }
+
+  async getDeletedPosts(query: ListPostDeleteDto, user: User) {
+    try {
+      const { page, size, orderBy } = query;
+
+      const queryBuilder = this.postsRepository
+        .createQueryBuilder('post')
+        .distinct(true)
+        .where('post.user_id = :user_id AND post.deleted_at IS NOT NULL', {
+          user_id: user.id,
+        })
+        .leftJoinAndSelect('post.images', 'images', 'images.type = :type', {
+          type: ImageType.THUMBNAIL,
+        })
+        .leftJoin('post.likes', 'likes', 'likes.target_type = :target_type', {
+          target_type: LikeType.POST,
+        })
+        .loadRelationCountAndMap('post.likeCount', 'post.likes')
+        .leftJoin('post.comments', 'comments')
+        .loadRelationCountAndMap('post.commentCount', 'post.comments')
+        .leftJoin('post.shares', 'shares')
+        .loadRelationCountAndMap('post.shareCount', 'post.shares')
+        .orderBy('post.deleted_at', orderBy)
+        .limit(size)
+        .offset((page - 1) * size);
+
+      return await this.getPaginatedPosts(queryBuilder, page, size);
+    } catch (error) {
+      this.handleError(error, 'Get deleted posts failed');
     }
   }
 
@@ -510,25 +547,74 @@ export class PostsService {
     }
   }
 
-  async adminGetRemovedPosts() {
+  async adminGetRemovedPosts(query: QueryListDto) {
     try {
-      return await this.postsRepository.find({
-        where: {
-          status: PostStatus.REJECTED,
-          removedByAdmin: Not(IsNull()),
-          removedAt: Not(IsNull()),
-        },
-        relations: { removedByAdmin: true },
-      });
+      const { page, size, orderBy } = query;
+
+      const queryBuilder = this.postsRepository
+        .createQueryBuilder('post')
+        .where(
+          'post.status = :status AND post.removed_at IS NOT NULL AND post.removed_by_admin_id IS NOT NULL',
+          {
+            status: PostStatus.DELETED,
+          },
+        )
+        .leftJoin('post.user', 'user')
+        .addSelect(['user.id', 'user.username', 'user.avatar'])
+        .leftJoin('post.removedByAdmin', 'removedByAdmin')
+        .addSelect([
+          'removedByAdmin.id',
+          'removedByAdmin.username',
+          'removedByAdmin.avatar',
+        ])
+        .leftJoin('post.images', 'images', 'images.type = :type', {
+          type: ImageType.THUMBNAIL,
+        })
+        .addSelect(['images.id', 'images.url', 'images.type'])
+        .orderBy('post.removed_at', orderBy)
+        .limit(size)
+        .offset((page - 1) * size);
+
+      return await this.getPaginatedPosts(queryBuilder, page, size);
     } catch (error) {
       this.handleError(error, 'Admin get removed posts failed');
+    }
+  }
+
+  async adminGetRemovedPostsByUser(query: QueryListDto) {
+    try {
+      const { page, size, orderBy } = query;
+
+      const queryBuilder = this.postsRepository
+        .createQueryBuilder('post')
+        .where('post.status = :status AND post.deleted_at IS NOT NULL', {
+          status: PostStatus.DELETED,
+        })
+        .leftJoin('post.user', 'user')
+        .addSelect(['user.id', 'user.username', 'user.avatar'])
+        .leftJoin('post.images', 'images', 'images.type = :type', {
+          type: ImageType.THUMBNAIL,
+        })
+        .addSelect(['images.id', 'images.url', 'images.type'])
+        .orderBy('post.deleted_at', orderBy)
+        .limit(size)
+        .offset((page - 1) * size);
+
+      return await this.getPaginatedPosts(queryBuilder, page, size);
+    } catch (error) {
+      this.handleError(error, 'Admin get removed posts by user failed');
     }
   }
 
   async adminGetRemovedPostDetail(id: number) {
     try {
       return await this.postsRepository.findOne({
-        where: { id, removedByAdmin: Not(IsNull()), removedAt: Not(IsNull()) },
+        where: {
+          id,
+          removedByAdmin: Not(IsNull()),
+          removedAt: Not(IsNull()),
+          status: PostStatus.DELETED,
+        },
         relations: { removedByAdmin: true },
       });
     } catch (error) {
@@ -539,7 +625,7 @@ export class PostsService {
   async adminRemovePost(deletePostDto: DeletePostDto, user: User) {
     try {
       return await this.postsRepository.update(deletePostDto.id, {
-        status: PostStatus.REJECTED,
+        status: PostStatus.DELETED,
         removedReason: deletePostDto.removedReason,
         removedByAdmin: user,
         removedAt: new Date(),
@@ -556,5 +642,19 @@ export class PostsService {
       status: PostStatus.APPROVED,
       removedReason: null,
     });
+  }
+
+  async permanentlyDeleteDraftPost(id: number, user: User) {
+    try {
+      const post = await this.isExistPostAndCheckAccess(id, user);
+
+      if (!post.isDraft) {
+        throw new BadRequestException('Post is not a draft');
+      }
+
+      return await this.postsRepository.delete(id);
+    } catch (error) {
+      this.handleError(error, 'Permanently delete draft post failed');
+    }
   }
 }

@@ -3,11 +3,12 @@ import { Permissions } from '@libs/decorators/permissions.decorator';
 import { ResponseMessage } from '@libs/decorators/responseMessage.decorator';
 import { CurrentUser } from '@libs/decorators/user.decorator';
 import { Permission } from '@libs/enums';
-import { Body, Controller, Get, Param, Patch } from '@nestjs/common';
+import { Body, Controller, Get, Param, Patch, Query } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
 import { DeletePostDto, RestorePostDto } from './dto/action-post.dto';
 import { DeleteUserDto, RestoreUserDto } from './dto/action-user.dto';
+import { QueryListDto } from '@libs/base/base.dto';
 
 @ApiTags('Admin')
 @Controller('admin')
@@ -18,8 +19,16 @@ export class AdminController {
   @ApiOperation({ summary: 'Admin get removed posts' })
   @ResponseMessage('Admin get removed posts successfully')
   @Get('removed-posts')
-  async getRemovedPosts() {
-    return await this.adminService.getRemovedPosts();
+  async getRemovedPosts(@Query() query: QueryListDto) {
+    return await this.adminService.getRemovedPosts(query);
+  }
+
+  @Permissions(Permission.ADMIN_GET_REMOVED_POSTS_BY_USER)
+  @ApiOperation({ summary: 'Admin get removed posts by user' })
+  @ResponseMessage('Admin get removed posts by user successfully')
+  @Get('removed-posts-by-user')
+  async getRemovedPostsByUser(@Query() query: QueryListDto) {
+    return await this.adminService.getRemovedPostsByUser(query);
   }
 
   @Permissions(Permission.ADMIN_GET_REMOVED_POST_DETAIL)
@@ -53,8 +62,8 @@ export class AdminController {
   @ApiOperation({ summary: 'Admin get removed users' })
   @ResponseMessage('Admin get removed users successfully')
   @Get('removed-users')
-  async getRemovedUsers() {
-    return await this.adminService.getRemovedUsers();
+  async getRemovedUsers(@Query() query: QueryListDto) {
+    return await this.adminService.getRemovedUsers(query);
   }
 
   @Permissions(Permission.ADMIN_GET_REMOVED_USER_DETAIL)
@@ -82,5 +91,13 @@ export class AdminController {
   @Patch('restore-user')
   async restoreUser(@Body() restoreUserDto: RestoreUserDto) {
     return await this.adminService.restoreUser(restoreUserDto);
+  }
+
+  @Permissions(Permission.ADMIN_GET_REMOVED_USERS_BY_USER)
+  @ApiOperation({ summary: 'Admin get removed users by user' })
+  @ResponseMessage('Admin get removed users by user successfully')
+  @Get('removed-users-by-user')
+  async getRemovedUsersByUser(@Query() query: QueryListDto) {
+    return await this.adminService.getRemovedUsersByUser(query);
   }
 }

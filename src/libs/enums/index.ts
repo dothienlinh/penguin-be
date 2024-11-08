@@ -27,6 +27,7 @@ export enum PostStatus {
   PENDING = 'pending',
   APPROVED = 'approved',
   REJECTED = 'rejected',
+  DELETED = 'deleted',
 }
 
 export enum UpdatePostStatus {
@@ -56,15 +57,18 @@ export enum Permission {
   ADMIN_REMOVE_USER = 'admin_remove_user',
   ADMIN_RESTORE_USER = 'admin_restore_user',
   ADMIN_GET_REMOVED_POSTS = 'admin_get_removed_posts',
+  ADMIN_GET_REMOVED_USERS = 'admin_get_removed_users',
   ADMIN_GET_REMOVED_POST_DETAIL = 'admin_get_removed_post_detail',
   ADMIN_GET_REMOVED_USER_DETAIL = 'admin_get_removed_user_detail',
-  ADMIN_GET_REMOVED_USERS = 'admin_get_removed_users',
+  ADMIN_GET_REMOVED_POSTS_BY_USER = 'admin_get_removed_posts_by_user',
+  ADMIN_GET_REMOVED_USERS_BY_USER = 'admin_get_removed_users_by_user',
 
   // USER
   READ_USER = 'read_user',
   WRITE_USER = 'write_user',
   DELETE_USER = 'delete_user',
   UPDATE_USER = 'update_user',
+  USER_HAS_PERMISSION = 'user_has_permission',
 
   // POST
   WRITE_POST = 'write_post',
@@ -73,6 +77,7 @@ export enum Permission {
   UPDATE_STATUS_POST = 'update_status_post',
   UPDATE_TO_DRAFT = 'update_to_draft',
   READ_PENDING_POST = 'read_pending_post',
+  PERMANENTLY_DELETE_POST = 'permanently_delete_post',
 
   // COMMENT
   READ_COMMENT = 'read_comment',
