@@ -1,6 +1,7 @@
 import { AuthService } from '@apis/auth/auth.service';
 import { RolesService } from '@apis/roles/roles.service';
 import { Provider, Roles } from '@libs/enums';
+import { toLowerCaseNonAccentVietnamese } from '@libs/utils/converts-string.util';
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { PassportStrategy } from '@nestjs/passport';
@@ -18,6 +19,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       clientSecret: configService.getOrThrow<string>('GOOGLE_CLIENT_SECRET'),
       callbackURL: `${configService.getOrThrow<string>('BACKEND_URL')}/api/auth/google/callback`,
       scope: ['email', 'profile'],
+      proxy: true,
     });
   }
 
@@ -29,11 +31,19 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   ) {
     const { name, emails, photos, id, displayName } = profile;
 
+    const username = displayName
+      ? toLowerCaseNonAccentVietnamese(displayName) + '_' + id
+      : toLowerCaseNonAccentVietnamese(name.givenName) +
+        '_' +
+        toLowerCaseNonAccentVietnamese(name.familyName) +
+        '_' +
+        id;
+
     const role = await this.rolesService.findOneByName(Roles.USER);
 
     const user = await this.authService.validateGoogleUser({
       email: emails[0].value,
-      username: displayName ?? name.givenName,
+      username,
       googleId: id,
       avatar: photos[0].value,
       provider: Provider.GOOGLE,

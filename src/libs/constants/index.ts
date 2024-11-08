@@ -43,9 +43,16 @@ export const IMAGE_TYPES = [
   'image/heif',
 ];
 
+export const VIDEO_TYPES = ['video/mp4', 'video/mpeg', 'video/quicktime'];
+export const DOCUMENT_TYPES = [
+  'application/pdf',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+];
+
 export const UPLOAD_FOLDER = 'uploads';
 
-export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
+export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB default
 
 export const PERMISSIONS_KEY = 'permissions';
 
@@ -80,6 +87,9 @@ export const PERMISSIONS_ADMIN_ONLY = [
   Permission.ADMIN_GET_REMOVED_USERS,
   Permission.ADMIN_GET_REMOVED_POST_DETAIL,
   Permission.ADMIN_GET_REMOVED_USER_DETAIL,
+  Permission.ADMIN_GET_REMOVED_POSTS_BY_USER,
+  Permission.ADMIN_GET_REMOVED_USERS_BY_USER,
+  Permission.PERMANENTLY_DELETE_POST,
 ];
 
 export const PERMISSIONS_USER_ONLY = [
@@ -92,6 +102,7 @@ export const PERMISSIONS_USER_ONLY = [
   Permission.READ_IMAGE,
   Permission.UPDATE_TO_DRAFT,
   Permission.UPDATE_POST,
+  Permission.PERMANENTLY_DELETE_POST,
 ];
 
 export const REGEX_USERNAME = /^[a-zA-Z0-9_]{3,20}$/;

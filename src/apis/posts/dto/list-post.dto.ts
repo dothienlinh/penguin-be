@@ -6,3 +6,7 @@ export class ListPostDto extends IntersectionType(
   OmitType(PaginationDto, ['from', 'to'] as const),
   GetPostDto,
 ) {}
+
+export class ListPostDeleteDto extends IntersectionType(
+  OmitType(PaginationDto, ['from', 'to'] as const),
+) {}

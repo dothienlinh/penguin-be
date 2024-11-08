@@ -1,5 +1,8 @@
+import { Permissions } from '@libs/decorators/permissions.decorator';
 import { Public } from '@libs/decorators/public.decorator';
+import { ResponseMessage } from '@libs/decorators/responseMessage.decorator';
 import { CurrentUser } from '@libs/decorators/user.decorator';
+import { Permission } from '@libs/enums';
 import {
   Body,
   Controller,
@@ -8,13 +11,15 @@ import {
   Param,
   Patch,
   Post,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
+import { Express } from 'express';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
-import { Permissions } from '@libs/decorators/permissions.decorator';
-import { Permission } from '@libs/enums';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @ApiTags('Users')
 @Controller('users')
@@ -41,10 +46,10 @@ export class UsersController {
   }
 
   @Permissions(Permission.READ_USER)
-  @Get(':id')
-  @ApiOperation({ summary: 'Get user by id' })
-  async findOne(@Param('id') id: number) {
-    return await this.usersService.findOneById(id);
+  @Get(':username')
+  @ApiOperation({ summary: 'Get user by username' })
+  async findOne(@Param('username') username: string) {
+    return await this.usersService.findOneByUsername(username);
   }
 
   @Permissions(Permission.READ_USER)
@@ -55,7 +60,7 @@ export class UsersController {
   }
 
   @Permissions(Permission.UPDATE_USER)
-  @Post(':id/restore')
+  @Patch(':id/restore')
   @Public()
   @ApiOperation({ summary: 'Restore user' })
   async restore(@Param('id') id: number) {
@@ -68,15 +73,19 @@ export class UsersController {
     return this.usersService.followUser(id, user);
   }
 
-  @Permissions(Permission.UPDATE_USER)
-  @Patch(':id')
+  @Patch('')
+  @UseInterceptors(FileInterceptor('avatar'))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({ type: UpdateUserDto })
   @ApiOperation({ summary: 'Update user' })
+  @ResponseMessage('Updated user successfully')
   async update(
-    @Param('id') id: number,
     @Body() updateUserDto: UpdateUserDto,
+    @UploadedFile() avatar: Express.Multer.File,
     @CurrentUser() user: User,
   ) {
-    return await this.usersService.update(id, updateUserDto, user);
+    const avatarUrl = avatar ? avatar.filename : null;
+    return await this.usersService.update(updateUserDto, avatarUrl, user);
   }
 
   @Permissions(Permission.UPDATE_USER)

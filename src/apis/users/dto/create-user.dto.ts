@@ -15,6 +15,8 @@ import {
 export class CreateUserDto {
   @IsString()
   @IsNotEmpty()
+  @MaxLength(20)
+  @MinLength(3)
   @Matches(REGEX_USERNAME, {
     message:
       'Username must be 3-20 characters, only letters, numbers, and underscores',
