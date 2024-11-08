@@ -1,4 +1,3 @@
-import { LikesService } from '@apis/likes/likes.service';
 import { Post } from '@apis/posts/entities/post.entity';
 import { User } from '@apis/users/entities/user.entity';
 import { ErrorHandler } from '@libs/utils/error-handler.utils';
@@ -7,15 +6,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
 import { Repository } from 'typeorm';
 import { CreateCommentDto } from './dto/create-comment.dto';
-import { CreateReplyCommentDto } from './dto/create-reply-comment.dto';
 import { Comment } from './entities/comment.entity';
+import { PostsService } from '@apis/posts/posts.service';
+import { ListCommentDto } from './dto/list-comment.dto';
+import { AccessControl } from '@libs/utils/access-control.util';
 
 @Injectable()
 export class CommentsService {
   constructor(
     @InjectRepository(Comment)
     private readonly commentsRepository: Repository<Comment>,
-    private readonly likesService: LikesService,
+    private readonly postsService: PostsService,
   ) {}
 
   private readonly logger = new Logger(CommentsService.name);
@@ -82,28 +83,12 @@ export class CommentsService {
     }
   }
 
-  async create(createCommentDto: CreateCommentDto) {
+  async listCommentPost(postId: number, query: ListCommentDto) {
     try {
-      const comment = this.commentsRepository.create(createCommentDto);
-      await this.commentsRepository.save(comment);
-      return { success: true };
-    } catch (error) {
-      this.handleError(error, 'Create comment failed');
-    }
-  }
+      await this.postsService.isPostExist(postId);
 
-  async createReplyComment(createReplyCommentDto: CreateReplyCommentDto) {
-    try {
-      const comment = this.commentsRepository.create(createReplyCommentDto);
-      await this.commentsRepository.save(comment);
-      return { success: true };
-    } catch (error) {
-      this.handleError(error, 'Create reply comment failed');
-    }
-  }
+      const { orderBy, page, parentCommentId, size } = query;
 
-  async listCommentPost(post: Post) {
-    try {
       const comments = await this.commentsRepository
         .createQueryBuilder('comment')
         .leftJoin('comment.likes', 'likes')
@@ -113,7 +98,17 @@ export class CommentsService {
           'comment.replyCommentCount',
           'comment.replyComments',
         )
-        .where('comment.post_id = :postId', { postId: post.id })
+        .where(
+          `comment.post_id = :postId ${
+            parentCommentId
+              ? 'AND comment.parent_comment_id = :parentCommentId'
+              : ''
+          }`,
+          { postId, ...(parentCommentId && { parentCommentId }) },
+        )
+        .orderBy('comment.created_at', orderBy)
+        .limit(size)
+        .offset((page - 1) * size)
         .getMany();
       return plainToInstance(Comment, comments);
     } catch (error) {
@@ -121,29 +116,71 @@ export class CommentsService {
     }
   }
 
-  async remove(id: number, post: Post, user: User) {
+  async createComment(createCommentDto: CreateCommentDto, user: User) {
     try {
-      const comment = await this.findOneCommentAllRelations(
-        id,
-        post,
-        user,
-        true,
-      );
-      return this.commentsRepository.softRemove(comment);
+      const { content, postId, parentCommentId } = createCommentDto;
+
+      await this.postsService.isPostExist(postId);
+
+      if (parentCommentId) {
+        await this.findOne(parentCommentId);
+      }
+
+      const comment = await this.commentsRepository
+        .create({
+          content,
+          ...(parentCommentId && {
+            parentComment: { id: parentCommentId },
+          }),
+          post: { id: postId },
+          user: { id: user.id },
+        })
+        .save();
+
+      return plainToInstance(Comment, comment);
     } catch (error) {
-      this.handleError(error, 'Remove comment failed');
+      this.handleError(error, 'Create comment failed');
     }
   }
 
-  async restore(id: number, post: Post, user: User) {
+  async deleteComment(id: number, user: User) {
     try {
-      const comment = await this.findOneCommentAllRelations(
-        id,
-        post,
-        user,
-        true,
-      );
-      return this.commentsRepository.recover(comment);
+      const comment = await this.commentsRepository.findOne({
+        where: { id },
+        relations: { likes: true, replyComments: true },
+      });
+
+      AccessControl.checkUserAccess(user, comment.user.id);
+
+      if (!comment) {
+        throw new NotFoundException('Comment not found');
+      }
+
+      return this.commentsRepository.softRemove(comment);
+    } catch (error) {
+      this.handleError(error, 'Delete comment failed');
+    }
+  }
+
+  async restoreComment(id: number, user: User) {
+    try {
+      const comment = await this.commentsRepository.findOne({
+        where: {
+          id,
+        },
+        relations: { likes: true, replyComments: true },
+        withDeleted: true,
+      });
+
+      AccessControl.checkUserAccess(user, comment.user.id);
+
+      if (!comment) {
+        throw new NotFoundException('Comment not found');
+      }
+
+      const restoredComment = await this.commentsRepository.recover(comment);
+
+      return plainToInstance(Comment, restoredComment);
     } catch (error) {
       this.handleError(error, 'Restore comment failed');
     }

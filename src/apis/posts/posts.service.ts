@@ -1,10 +1,8 @@
+import { DeletePostDto, RestorePostDto } from '@apis/admin/dto/action-post.dto';
 import { CategoriesService } from '@apis/categories/categories.service';
-import { CommentsService } from '@apis/comments/comments.service';
-import { AddCommentDto } from '@apis/comments/dto/add-comment.dto';
 import { ImagesService } from '@apis/images/images.service';
-import { LikesService } from '@apis/likes/likes.service';
-import { SharesService } from '@apis/shares/shares.service';
 import { User } from '@apis/users/entities/user.entity';
+import { QueryListDto } from '@libs/base/base.dto';
 import { ImageType, LikeType, OrderBy, PostStatus, Roles } from '@libs/enums';
 import { AccessControl } from '@libs/utils/access-control.util';
 import { ErrorHandler } from '@libs/utils/error-handler.utils';
@@ -18,14 +16,12 @@ import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
 import { IsNull, Not, Repository, SelectQueryBuilder } from 'typeorm';
 import { CreatePostDto } from './dto/create-post.dto';
+import { GetPostDto } from './dto/get-post.dto';
 import { ListPostDeleteDto, ListPostDto } from './dto/list-post.dto';
 import { SearchPostDto } from './dto/search-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
-import { Post } from './entities/post.entity';
-import { GetPostDto } from './dto/get-post.dto';
 import { UploadImagePostDto } from './dto/upload-image-post.dto';
-import { DeletePostDto, RestorePostDto } from '@apis/admin/dto/action-post.dto';
-import { QueryListDto } from '@libs/base/base.dto';
+import { Post } from './entities/post.entity';
 
 @Injectable()
 export class PostsService {
@@ -35,9 +31,6 @@ export class PostsService {
     @InjectRepository(Post)
     private readonly postsRepository: Repository<Post>,
     private readonly imagesService: ImagesService,
-    private readonly likesService: LikesService,
-    private readonly commentsService: CommentsService,
-    private readonly sharesService: SharesService,
     private readonly categoriesService: CategoriesService,
   ) {}
 
@@ -80,7 +73,6 @@ export class PostsService {
         images: true,
         likes: true,
         comments: true,
-        shares: true,
       },
       withDeleted,
     });
@@ -120,8 +112,6 @@ export class PostsService {
       .loadRelationCountAndMap('post.likeCount', 'post.likes')
       .leftJoin('post.comments', 'comments')
       .loadRelationCountAndMap('post.commentCount', 'post.comments')
-      .leftJoin('post.shares', 'shares')
-      .loadRelationCountAndMap('post.shareCount', 'post.shares')
       .orderBy('post.created_at', orderBy)
       .limit(size)
       .offset((page - 1) * size);
@@ -202,30 +192,32 @@ export class PostsService {
     try {
       const { page, size, orderBy } = query;
 
-      const queryBuilder = this.postsRepository
-        .createQueryBuilder('post')
-        .distinct(true)
-        .where('post.user_id = :user_id AND post.deleted_at IS NOT NULL', {
+      const queryBuilder = this.createBasePostQuery(page, size, orderBy).where(
+        'post.user_id = :user_id AND post.deleted_at IS NOT NULL',
+        {
           user_id: user.id,
-        })
-        .leftJoinAndSelect('post.images', 'images', 'images.type = :type', {
-          type: ImageType.THUMBNAIL,
-        })
-        .leftJoin('post.likes', 'likes', 'likes.target_type = :target_type', {
-          target_type: LikeType.POST,
-        })
-        .loadRelationCountAndMap('post.likeCount', 'post.likes')
-        .leftJoin('post.comments', 'comments')
-        .loadRelationCountAndMap('post.commentCount', 'post.comments')
-        .leftJoin('post.shares', 'shares')
-        .loadRelationCountAndMap('post.shareCount', 'post.shares')
-        .orderBy('post.deleted_at', orderBy)
-        .limit(size)
-        .offset((page - 1) * size);
+        },
+      );
 
       return await this.getPaginatedPosts(queryBuilder, page, size);
     } catch (error) {
       this.handleError(error, 'Get deleted posts failed');
+    }
+  }
+
+  async listSaves(query: QueryListDto, user: User) {
+    try {
+      const { page, size, orderBy } = query;
+
+      const queryBuilder = this.createBasePostQuery(page, size, orderBy)
+        .leftJoin('post.saves', 'saves')
+        .where('saves.user_id = :user_id', {
+          user_id: user.id,
+        });
+
+      return await this.getPaginatedPosts(queryBuilder, page, size);
+    } catch (error) {
+      this.handleError(error, 'Get saves failed');
     }
   }
 
@@ -292,16 +284,6 @@ export class PostsService {
     }
   }
 
-  async listUserLikedPost(id: number) {
-    try {
-      const post = await this.findOne(id);
-      const users = await this.likesService.getListUserLiked(post);
-      return plainToInstance(User, users);
-    } catch (error) {
-      this.handleError(error, 'Get user like posts failed');
-    }
-  }
-
   async update(id: number, updatePostDto: UpdatePostDto, user: User) {
     try {
       const post = await this.isExistPostAndCheckAccess(id, user);
@@ -332,135 +314,6 @@ export class PostsService {
       return await this.postsRepository.recover(post);
     } catch (error) {
       this.handleError(error, 'Restore post failed');
-    }
-  }
-
-  async addLikePost(user: User, postId: number) {
-    try {
-      const post = await this.findOne(postId);
-      return this.likesService.addLike(user, post);
-    } catch (error) {
-      this.handleError(error, 'Add like post failed');
-    }
-  }
-
-  async unLikePost(user: User, postId: number) {
-    try {
-      const post = await this.findOne(postId);
-      return this.likesService.unLike(user, post);
-    } catch (error) {
-      this.handleError(error, 'Remove like post failed');
-    }
-  }
-
-  async addComment(user: User, postId: number, content: string) {
-    try {
-      const post = await this.findOne(postId);
-      return this.commentsService.create({ user, post, content });
-    } catch (error) {
-      this.handleError(error, 'Add comment failed');
-    }
-  }
-
-  async removeComment(postId: number, commentId: number, user: User) {
-    try {
-      const post = await this.isExistPostAndCheckAccess(postId, user);
-      return this.commentsService.remove(commentId, post, user);
-    } catch (error) {
-      this.handleError(error, 'Remove comment failed');
-    }
-  }
-
-  async restoreComment(postId: number, commentId: number, user: User) {
-    try {
-      const post = await this.isExistPostAndCheckAccess(postId, user);
-      return this.commentsService.restore(commentId, post, user);
-    } catch (error) {
-      this.handleError(error, 'Restore comment failed');
-    }
-  }
-
-  async listCommentPost(postId: number) {
-    try {
-      const post = await this.findOne(postId);
-
-      return this.commentsService.listCommentPost(post);
-    } catch (error) {
-      this.handleError(error, 'Get comments failed');
-    }
-  }
-
-  async addReplyComment(
-    user: User,
-    postId: number,
-    commentId: number,
-    addCommentDto: AddCommentDto,
-  ) {
-    try {
-      const post = await this.findOne(postId);
-      const parentComment = await this.commentsService.findOne(commentId);
-      return this.commentsService.createReplyComment({
-        user,
-        post,
-        content: addCommentDto.content,
-        parentComment,
-      });
-    } catch (error) {
-      this.handleError(error, 'Add reply comment failed');
-    }
-  }
-
-  async listReplyComment(postId: number, commentId: number) {
-    try {
-      const post = await this.findOne(postId);
-      const comment = await this.commentsService.findOne(commentId);
-      return this.commentsService.getReplyComments(comment, post);
-    } catch (error) {
-      this.handleError(error, 'Get reply comments failed');
-    }
-  }
-
-  async sharePost(user: User, postId: number) {
-    try {
-      const post = await this.findOne(postId);
-      return this.sharesService.createShare(user, post);
-    } catch (error) {
-      this.handleError(error, 'Share post failed');
-    }
-  }
-
-  async unsharePost(user: User, postId: number, shareId: number) {
-    try {
-      const post = await this.findOne(postId);
-      return this.sharesService.removeShare(shareId, user, post);
-    } catch (error) {
-      this.handleError(error, 'Unshare post failed');
-    }
-  }
-
-  async restoreShare(user: User, postId: number, shareId: number) {
-    try {
-      const post = await this.findOne(postId);
-      return this.sharesService.restoreShare(shareId, user, post);
-    } catch (error) {
-      this.handleError(error, 'Restore share failed');
-    }
-  }
-
-  async getSharedPosts(user: User) {
-    try {
-      const shares = await this.sharesService.getSharesByUser(user);
-      return shares.map((share) => share.post);
-    } catch (error) {
-      this.handleError(error, 'Get shared posts failed');
-    }
-  }
-
-  async getPostShares(postId: number) {
-    try {
-      return this.sharesService.getSharesByPost(postId);
-    } catch (error) {
-      this.handleError(error, 'Get post shares failed');
     }
   }
 

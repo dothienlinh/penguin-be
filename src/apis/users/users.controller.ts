@@ -34,15 +34,15 @@ export class UsersController {
   }
 
   @Permissions(Permission.READ_USER)
-  @Get(':id/followers')
-  async getFollowers(@Param('id') id: number) {
-    return this.usersService.getFollowers(id);
+  @Get('followers')
+  async getFollowers(@CurrentUser() user: User) {
+    return this.usersService.getFollowers(user.id);
   }
 
   @Permissions(Permission.READ_USER)
-  @Get(':id/following')
-  async getFollowing(@Param('id') id: number) {
-    return this.usersService.getFollowing(id);
+  @Get('following')
+  async getFollowing(@CurrentUser() user: User) {
+    return this.usersService.getFollowing(user.id);
   }
 
   @Permissions(Permission.READ_USER)

@@ -1,13 +1,9 @@
-import { Post } from '@apis/posts/entities/post.entity';
-import { User } from '@apis/users/entities/user.entity';
-import { Type } from 'class-transformer';
 import {
   IsString,
   IsNotEmpty,
-  ValidateNested,
-  IsObject,
-  IsNotEmptyObject,
-  IsDefined,
+  IsNumber,
+  IsOptional,
+  IsPositive,
 } from 'class-validator';
 
 export class CreateCommentDto {
@@ -15,17 +11,13 @@ export class CreateCommentDto {
   @IsNotEmpty()
   content: string;
 
-  @IsDefined()
-  @IsNotEmptyObject()
-  @IsObject()
-  @ValidateNested()
-  @Type(() => User)
-  user: User;
+  @IsNumber()
+  @IsNotEmpty()
+  @IsPositive()
+  postId: number;
 
-  @IsDefined()
-  @IsNotEmptyObject()
-  @IsObject()
-  @ValidateNested()
-  @Type(() => Post)
-  post: Post;
+  @IsNumber()
+  @IsOptional()
+  @IsPositive()
+  parentCommentId!: number;
 }

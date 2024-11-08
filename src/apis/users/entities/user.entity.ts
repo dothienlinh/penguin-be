@@ -5,7 +5,7 @@ import { Like } from '@apis/likes/entities/like.entity';
 import { Permission } from '@apis/permissions/entities/permission.entity';
 import { Post } from '@apis/posts/entities/post.entity';
 import { Role } from '@apis/roles/entities/role.entity';
-import { Share } from '@apis/shares/entities/share.entity';
+import { Save } from '@apis/saves/entities/save.entity';
 import { BaseEntity } from '@libs/base/base.entity';
 import { Gender, Provider } from '@libs/enums';
 import { Exclude } from 'class-transformer';
@@ -108,11 +108,11 @@ export class User extends BaseEntity {
   })
   likes: Like[];
 
-  @OneToMany(() => Share, (share) => share.user, {
+  @OneToMany(() => Save, (save) => save.user, {
     cascade: true,
     onDelete: 'CASCADE',
   })
-  shares: Share[];
+  saves: Save[];
 
   @OneToMany(() => Message, (message) => message.sender)
   sentMessages: Message[];

@@ -80,28 +80,13 @@ export enum Permission {
   PERMANENTLY_DELETE_POST = 'permanently_delete_post',
 
   // COMMENT
-  READ_COMMENT = 'read_comment',
-  WRITE_COMMENT = 'write_comment',
-  DELETE_COMMENT = 'delete_comment',
-  UPDATE_COMMENT = 'update_comment',
-
-  // LIKE
-  READ_LIKE = 'read_like',
-  WRITE_LIKE = 'write_like',
-  DELETE_LIKE = 'delete_like',
-  UPDATE_LIKE = 'update_like',
+  CREATE_COMMENT = 'create_comment',
 
   // ROLE
   READ_ROLE = 'read_role',
   WRITE_ROLE = 'write_role',
   DELETE_ROLE = 'delete_role',
   UPDATE_ROLE = 'update_role',
-
-  // SHARE
-  READ_SHARE = 'read_share',
-  WRITE_SHARE = 'write_share',
-  DELETE_SHARE = 'delete_share',
-  UPDATE_SHARE = 'update_share',
 
   // CHAT
   READ_CHAT = 'read_chat',

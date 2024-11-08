@@ -2,7 +2,7 @@ import { Category } from '@apis/categories/entities/category.entity';
 import { Comment } from '@apis/comments/entities/comment.entity';
 import { Image } from '@apis/images/entities/image.entity';
 import { Like } from '@apis/likes/entities/like.entity';
-import { Share } from '@apis/shares/entities/share.entity';
+import { Save } from '@apis/saves/entities/save.entity';
 import { User } from '@apis/users/entities/user.entity';
 import { BaseEntity } from '@libs/base/base.entity';
 import { PostStatus } from '@libs/enums';
@@ -63,11 +63,11 @@ export class Post extends BaseEntity {
   })
   comments: Comment[];
 
-  @OneToMany(() => Share, (share) => share.post, {
+  @OneToMany(() => Save, (save) => save.post, {
     cascade: true,
     onDelete: 'CASCADE',
   })
-  shares: Share[];
+  saves: Save[];
 
   @ManyToOne(() => User, (user) => user.posts, {
     onDelete: 'CASCADE',

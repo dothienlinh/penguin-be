@@ -307,7 +307,6 @@ export class UsersService {
           following: true,
           comments: true,
           likes: true,
-          shares: true,
         },
         withDeleted,
       });
