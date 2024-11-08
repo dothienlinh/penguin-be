@@ -1,7 +1,7 @@
 import { MigrationInterface, QueryRunner } from "typeorm";
 
-export class CreateTable1731005478435 implements MigrationInterface {
-    name = 'CreateTable1731005478435'
+export class CreateTable1731049547346 implements MigrationInterface {
+    name = 'CreateTable1731049547346'
 
     public async up(queryRunner: QueryRunner): Promise<void> {
         await queryRunner.query(`CREATE TABLE "message" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "content" character varying NOT NULL, "isRead" boolean NOT NULL DEFAULT false, "isDelivered" boolean NOT NULL DEFAULT true, "readAt" TIMESTAMP, "sender_id" integer, "receiver_id" integer, "chat_room_id" integer, CONSTRAINT "PK_ba01f0a3e0123651915008bc578" PRIMARY KEY ("id"))`);
@@ -9,13 +9,13 @@ export class CreateTable1731005478435 implements MigrationInterface {
         await queryRunner.query(`CREATE TABLE "category" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "name" character varying NOT NULL, CONSTRAINT "UQ_23c05c292c439d77b0de816b500" UNIQUE ("name"), CONSTRAINT "PK_9c4e4a89e3674fc9f382d733f03" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."image_type_enum" AS ENUM('thumbnail', 'image')`);
         await queryRunner.query(`CREATE TABLE "image" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "url" character varying(255) NOT NULL, "type" "public"."image_type_enum" NOT NULL DEFAULT 'thumbnail', "post_id" integer, CONSTRAINT "PK_d6db1ab4ee9ad9dbe86c64e4cc3" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TABLE "share" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "post_id" integer NOT NULL, "user_id" integer NOT NULL, CONSTRAINT "PK_67a2b28d2cff31834bc2aa1ed7c" PRIMARY KEY ("id"))`);
+        await queryRunner.query(`CREATE TABLE "saves" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "user_id" integer NOT NULL, "post_id" integer NOT NULL, CONSTRAINT "PK_d2ca4e689a49cafa0702b4ef91f" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."post_status_enum" AS ENUM('pending', 'approved', 'rejected', 'deleted')`);
         await queryRunner.query(`CREATE TABLE "post" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "title" character varying(255) NOT NULL, "content" text NOT NULL, "is_published" boolean NOT NULL DEFAULT false, "status" "public"."post_status_enum" NOT NULL DEFAULT 'pending', "is_draft" boolean NOT NULL DEFAULT true, "removed_reason" text, "removed_at" TIMESTAMP, "user_id" integer NOT NULL, "removed_by_admin_id" integer, CONSTRAINT "PK_be5fda3aac270b134ff9c21cdee" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."like_target_type_enum" AS ENUM('post', 'comment')`);
         await queryRunner.query(`CREATE TABLE "like" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "post_id" integer, "comment_id" integer, "target_type" "public"."like_target_type_enum" NOT NULL, "user_id" integer NOT NULL, CONSTRAINT "PK_eff3e46d24d416b52a7e0ae4159" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TABLE "comment" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "content" text NOT NULL, "parent_comment_id" integer, "user_id" integer NOT NULL, "post_id" integer NOT NULL, CONSTRAINT "PK_0b0e4bbc8415ec426f87f3a88e2" PRIMARY KEY ("id"))`);
-        await queryRunner.query(`CREATE TYPE "public"."permission_name_enum" AS ENUM('admin_remove_post', 'admin_restore_post', 'admin_remove_user', 'admin_restore_user', 'admin_get_removed_posts', 'admin_get_removed_users', 'admin_get_removed_post_detail', 'admin_get_removed_user_detail', 'admin_get_removed_posts_by_user', 'admin_get_removed_users_by_user', 'read_user', 'write_user', 'delete_user', 'update_user', 'user_has_permission', 'write_post', 'delete_post', 'update_post', 'update_status_post', 'update_to_draft', 'read_pending_post', 'permanently_delete_post', 'read_comment', 'write_comment', 'delete_comment', 'update_comment', 'read_like', 'write_like', 'delete_like', 'update_like', 'read_role', 'write_role', 'delete_role', 'update_role', 'read_share', 'write_share', 'delete_share', 'update_share', 'read_chat', 'write_chat', 'delete_chat', 'update_chat', 'read_image', 'write_image', 'delete_image', 'update_image', 'read_permission', 'write_permission', 'delete_permission', 'update_permission', 'read_category', 'write_category', 'delete_category', 'update_category', 'read_mail', 'write_mail', 'delete_mail', 'update_mail')`);
+        await queryRunner.query(`CREATE TYPE "public"."permission_name_enum" AS ENUM('admin_remove_post', 'admin_restore_post', 'admin_remove_user', 'admin_restore_user', 'admin_get_removed_posts', 'admin_get_removed_users', 'admin_get_removed_post_detail', 'admin_get_removed_user_detail', 'admin_get_removed_posts_by_user', 'admin_get_removed_users_by_user', 'read_user', 'write_user', 'delete_user', 'update_user', 'user_has_permission', 'write_post', 'delete_post', 'update_post', 'update_status_post', 'update_to_draft', 'read_pending_post', 'permanently_delete_post', 'read_comment', 'write_comment', 'delete_comment', 'update_comment', 'read_role', 'write_role', 'delete_role', 'update_role', 'read_chat', 'write_chat', 'delete_chat', 'update_chat', 'read_image', 'write_image', 'delete_image', 'update_image', 'read_permission', 'write_permission', 'delete_permission', 'update_permission', 'read_category', 'write_category', 'delete_category', 'update_category', 'read_mail', 'write_mail', 'delete_mail', 'update_mail')`);
         await queryRunner.query(`CREATE TABLE "permission" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "name" "public"."permission_name_enum" NOT NULL, CONSTRAINT "UQ_240853a0c3353c25fb12434ad33" UNIQUE ("name"), CONSTRAINT "PK_3b8b97af9d9d8807e41e6f48362" PRIMARY KEY ("id"))`);
         await queryRunner.query(`CREATE TYPE "public"."role_name_enum" AS ENUM('super_admin', 'admin', 'user')`);
         await queryRunner.query(`CREATE TABLE "role" ("id" SERIAL NOT NULL, "created_at" TIMESTAMP NOT NULL DEFAULT now(), "updated_at" TIMESTAMP NOT NULL DEFAULT now(), "deleted_at" TIMESTAMP, "name" "public"."role_name_enum" NOT NULL, CONSTRAINT "UQ_ae4578dcaed5adff96595e61660" UNIQUE ("name"), CONSTRAINT "PK_b36bcfe02fc8de3c57a8b2391c2" PRIMARY KEY ("id"))`);
@@ -38,8 +38,8 @@ export class CreateTable1731005478435 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "message" ADD CONSTRAINT "FK_f4da40532b0102d51beb220f16a" FOREIGN KEY ("receiver_id") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "message" ADD CONSTRAINT "FK_4404b7d229b7093872f40a87e7b" FOREIGN KEY ("chat_room_id") REFERENCES "chat_room"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "image" ADD CONSTRAINT "FK_595c60d3e7e8edf1cc0912782bd" FOREIGN KEY ("post_id") REFERENCES "post"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "share" ADD CONSTRAINT "FK_c809c0947bf385079767aaec25f" FOREIGN KEY ("post_id") REFERENCES "post"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
-        await queryRunner.query(`ALTER TABLE "share" ADD CONSTRAINT "FK_cb0f2a718c34d96af2fc0e31779" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "saves" ADD CONSTRAINT "FK_7b8bc823fd09b6b5751919d4a60" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
+        await queryRunner.query(`ALTER TABLE "saves" ADD CONSTRAINT "FK_7cd886b92b2b33f52a73f66e17c" FOREIGN KEY ("post_id") REFERENCES "post"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "post" ADD CONSTRAINT "FK_52378a74ae3724bcab44036645b" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "post" ADD CONSTRAINT "FK_8fac4c837f7720dc0882a646c97" FOREIGN KEY ("removed_by_admin_id") REFERENCES "user"("id") ON DELETE NO ACTION ON UPDATE NO ACTION`);
         await queryRunner.query(`ALTER TABLE "like" ADD CONSTRAINT "FK_4356ac2f9519c7404a2869f1691" FOREIGN KEY ("user_id") REFERENCES "user"("id") ON DELETE CASCADE ON UPDATE NO ACTION`);
@@ -79,8 +79,8 @@ export class CreateTable1731005478435 implements MigrationInterface {
         await queryRunner.query(`ALTER TABLE "like" DROP CONSTRAINT "FK_4356ac2f9519c7404a2869f1691"`);
         await queryRunner.query(`ALTER TABLE "post" DROP CONSTRAINT "FK_8fac4c837f7720dc0882a646c97"`);
         await queryRunner.query(`ALTER TABLE "post" DROP CONSTRAINT "FK_52378a74ae3724bcab44036645b"`);
-        await queryRunner.query(`ALTER TABLE "share" DROP CONSTRAINT "FK_cb0f2a718c34d96af2fc0e31779"`);
-        await queryRunner.query(`ALTER TABLE "share" DROP CONSTRAINT "FK_c809c0947bf385079767aaec25f"`);
+        await queryRunner.query(`ALTER TABLE "saves" DROP CONSTRAINT "FK_7cd886b92b2b33f52a73f66e17c"`);
+        await queryRunner.query(`ALTER TABLE "saves" DROP CONSTRAINT "FK_7b8bc823fd09b6b5751919d4a60"`);
         await queryRunner.query(`ALTER TABLE "image" DROP CONSTRAINT "FK_595c60d3e7e8edf1cc0912782bd"`);
         await queryRunner.query(`ALTER TABLE "message" DROP CONSTRAINT "FK_4404b7d229b7093872f40a87e7b"`);
         await queryRunner.query(`ALTER TABLE "message" DROP CONSTRAINT "FK_f4da40532b0102d51beb220f16a"`);
@@ -109,7 +109,7 @@ export class CreateTable1731005478435 implements MigrationInterface {
         await queryRunner.query(`DROP TYPE "public"."like_target_type_enum"`);
         await queryRunner.query(`DROP TABLE "post"`);
         await queryRunner.query(`DROP TYPE "public"."post_status_enum"`);
-        await queryRunner.query(`DROP TABLE "share"`);
+        await queryRunner.query(`DROP TABLE "saves"`);
         await queryRunner.query(`DROP TABLE "image"`);
         await queryRunner.query(`DROP TYPE "public"."image_type_enum"`);
         await queryRunner.query(`DROP TABLE "category"`);

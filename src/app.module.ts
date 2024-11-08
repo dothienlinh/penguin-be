@@ -10,7 +10,7 @@ import { MailModule } from '@apis/mail/mail.module';
 import { PermissionsModule } from '@apis/permissions/permissions.module';
 import { PostsModule } from '@apis/posts/posts.module';
 import { RolesModule } from '@apis/roles/roles.module';
-import { SharesModule } from '@apis/shares/shares.module';
+import { SavesModule } from '@apis/saves/saves.module';
 import { UploadModule } from '@apis/upload/upload.module';
 import { UsersModule } from '@apis/users/users.module';
 import { dataSourceOptions } from '@database/data-source';
@@ -41,7 +41,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     ImagesModule,
     CommentsModule,
     LikesModule,
-    SharesModule,
     ChatsModule,
     MailModule,
     UploadModule,
@@ -50,6 +49,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     CategoriesModule,
     DatabasesModule,
     AdminModule,
+    SavesModule,
   ],
   providers: [
     {

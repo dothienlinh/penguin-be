@@ -1,8 +1,5 @@
 import { CategoriesModule } from '@apis/categories/categories.module';
-import { CommentsModule } from '@apis/comments/comments.module';
 import { ImagesModule } from '@apis/images/images.module';
-import { LikesModule } from '@apis/likes/likes.module';
-import { SharesModule } from '@apis/shares/shares.module';
 import { createMulterOptions } from '@libs/configs/multer/multer-options.factory';
 import { IMAGE_TYPES } from '@libs/constants';
 import { Module } from '@nestjs/common';
@@ -23,9 +20,6 @@ import { PostsService } from './posts.service';
       },
     }),
     ImagesModule,
-    LikesModule,
-    CommentsModule,
-    SharesModule,
     CategoriesModule,
   ],
   controllers: [PostsController],

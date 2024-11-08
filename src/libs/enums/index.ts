@@ -85,23 +85,11 @@ export enum Permission {
   DELETE_COMMENT = 'delete_comment',
   UPDATE_COMMENT = 'update_comment',
 
-  // LIKE
-  READ_LIKE = 'read_like',
-  WRITE_LIKE = 'write_like',
-  DELETE_LIKE = 'delete_like',
-  UPDATE_LIKE = 'update_like',
-
   // ROLE
   READ_ROLE = 'read_role',
   WRITE_ROLE = 'write_role',
   DELETE_ROLE = 'delete_role',
   UPDATE_ROLE = 'update_role',
-
-  // SHARE
-  READ_SHARE = 'read_share',
-  WRITE_SHARE = 'write_share',
-  DELETE_SHARE = 'delete_share',
-  UPDATE_SHARE = 'update_share',
 
   // CHAT
   READ_CHAT = 'read_chat',
