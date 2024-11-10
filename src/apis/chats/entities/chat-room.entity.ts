@@ -20,7 +20,7 @@ export class ChatRoom extends BaseEntity {
   })
   messages: Message[];
 
-  @ManyToMany(() => User, (user) => user.chatRooms)
+  @ManyToMany(() => User, (user) => user.chatRooms, { cascade: true })
   @JoinTable({
     name: 'members_chat_rooms',
     joinColumn: {

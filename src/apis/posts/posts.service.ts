@@ -1,4 +1,3 @@
-import { DeletePostDto, RestorePostDto } from '@apis/admin/dto/action-post.dto';
 import { CategoriesService } from '@apis/categories/categories.service';
 import { ImagesService } from '@apis/images/images.service';
 import { User } from '@apis/users/entities/user.entity';
@@ -14,7 +13,7 @@ import {
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
-import { IsNull, Not, Repository, SelectQueryBuilder } from 'typeorm';
+import { Repository, LessThan } from 'typeorm';
 import { CreatePostDto } from './dto/create-post.dto';
 import { GetPostDto } from './dto/get-post.dto';
 import { ListPostDeleteDto, ListPostDto } from './dto/list-post.dto';
@@ -22,6 +21,8 @@ import { SearchPostDto } from './dto/search-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { UploadImagePostDto } from './dto/upload-image-post.dto';
 import { Post } from './entities/post.entity';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { responsePagination } from '@libs/utils/response-pagination.util';
 
 @Injectable()
 export class PostsService {
@@ -73,6 +74,10 @@ export class PostsService {
         images: true,
         likes: true,
         comments: true,
+        saves: true,
+        thumbnail: true,
+        categories: true,
+        user: true,
       },
       withDeleted,
     });
@@ -99,41 +104,32 @@ export class PostsService {
     }
   }
 
-  private createBasePostQuery(page: number, size: number, orderBy: OrderBy) {
-    return this.postsRepository
-      .createQueryBuilder('post')
-      .distinct(true)
+  private createBasePostQuery(
+    page: number,
+    size: number,
+    orderBy: OrderBy,
+    withDeleted?: boolean,
+  ) {
+    const queryBuilder = this.postsRepository.createQueryBuilder('post');
+
+    if (withDeleted) {
+      queryBuilder.withDeleted();
+    }
+
+    return queryBuilder
       .leftJoinAndSelect('post.images', 'images', 'images.type = :type', {
         type: ImageType.THUMBNAIL,
       })
-      .leftJoin('post.likes', 'likes', 'likes.target_type = :target_type', {
-        target_type: LikeType.POST,
-      })
-      .loadRelationCountAndMap('post.likeCount', 'post.likes')
-      .leftJoin('post.comments', 'comments')
+      .loadRelationCountAndMap('post.likeCount', 'post.likes', 'likes', (qb) =>
+        qb.where('likes.target_type = :target_type', {
+          target_type: LikeType.POST,
+        }),
+      )
       .loadRelationCountAndMap('post.commentCount', 'post.comments')
+      .distinct(true)
       .orderBy('post.created_at', orderBy)
       .limit(size)
       .offset((page - 1) * size);
-  }
-
-  private async getPaginatedPosts(
-    queryBuilder: SelectQueryBuilder<Post>,
-    page: number,
-    size: number,
-  ) {
-    const [posts, total] = await queryBuilder.getManyAndCount();
-    const totalPage = Math.ceil(total / size);
-
-    return {
-      result: plainToInstance(Post, posts),
-      meta: {
-        totalPage,
-        currentPage: page,
-        pageSize: size,
-        totalRecords: total,
-      },
-    };
   }
 
   private whereCondition(
@@ -164,7 +160,7 @@ export class PostsService {
     try {
       const { page, size, orderBy, isDraft, isPublished, status } = query;
       const checkAccess =
-        !isDraft || !isPublished || status !== PostStatus.APPROVED;
+        isDraft || !isPublished || status !== PostStatus.APPROVED;
 
       const { conditions, parameters } = this.whereCondition(
         [
@@ -178,11 +174,20 @@ export class PostsService {
       );
 
       const queryBuilder = this.createBasePostQuery(page, size, orderBy)
-        .where(conditions.join(' AND '), parameters)
+        .leftJoinAndSelect('post.saves', 'saves')
         .leftJoin('post.user', 'user')
-        .addSelect(['user.id', 'user.username', 'user.avatar']);
+        .addSelect(['user.id', 'user.username', 'user.avatar'])
+        .where(conditions.join(' AND '), parameters);
 
-      return await this.getPaginatedPosts(queryBuilder, page, size);
+      const result = await responsePagination(queryBuilder, page, size, Post);
+      result.result.forEach((post) => {
+        (post as any).isSaved = post.saves.some(
+          (save) => save.userId === user.id,
+        );
+        post.saves = undefined;
+      });
+
+      return { ...result };
     } catch (error) {
       this.handleError(error, 'Get posts failed');
     }
@@ -192,16 +197,38 @@ export class PostsService {
     try {
       const { page, size, orderBy } = query;
 
-      const queryBuilder = this.createBasePostQuery(page, size, orderBy).where(
-        'post.user_id = :user_id AND post.deleted_at IS NOT NULL',
-        {
-          user_id: user.id,
-        },
-      );
+      const queryBuilder = this.createBasePostQuery(page, size, orderBy, true)
+        .leftJoin('post.user', 'user')
+        .addSelect(['user.id', 'user.username', 'user.avatar'])
+        .where('post.deleted_at IS NOT NULL')
+        .andWhere('post.user_id = :userId', { userId: user.id });
 
-      return await this.getPaginatedPosts(queryBuilder, page, size);
+      const result = await responsePagination(queryBuilder, page, size, Post);
+
+      return result;
     } catch (error) {
       this.handleError(error, 'Get deleted posts failed');
+    }
+  }
+
+  async getDetailDeletedPost(id: number, user: User) {
+    try {
+      const post = await this.postsRepository.findOne({
+        where: { id },
+        withDeleted: true,
+        relations: { user: true },
+        select: { user: { id: true, username: true, avatar: true } },
+      });
+
+      if (!post) {
+        throw new NotFoundException('Post not found');
+      }
+
+      AccessControl.checkUserAccess(user, post.user.id);
+
+      return post;
+    } catch (error) {
+      this.handleError(error, 'Get detail deleted post failed');
     }
   }
 
@@ -210,12 +237,14 @@ export class PostsService {
       const { page, size, orderBy } = query;
 
       const queryBuilder = this.createBasePostQuery(page, size, orderBy)
+        .leftJoin('post.user', 'user')
+        .addSelect(['user.id', 'user.username', 'user.avatar'])
         .leftJoin('post.saves', 'saves')
         .where('saves.user_id = :user_id', {
           user_id: user.id,
         });
 
-      return await this.getPaginatedPosts(queryBuilder, page, size);
+      return await responsePagination(queryBuilder, page, size, Post);
     } catch (error) {
       this.handleError(error, 'Get saves failed');
     }
@@ -239,24 +268,54 @@ export class PostsService {
     try {
       const { isDraft, isPublished, status } = query;
 
+      console.log('type of isDraft', typeof isDraft);
+      console.log('type of isPublished', typeof isPublished);
+      console.log('type of status', typeof status);
+
       const checkAccess =
         isDraft === true ||
         isPublished === false ||
         (status !== undefined && status !== PostStatus.APPROVED);
 
-      const post = await this.postsRepository.findOne({
-        where: {
-          id,
-          ...(isDraft !== undefined && { isDraft }),
-          ...(isPublished !== undefined && { isPublished }),
-          ...(status !== undefined && { status }),
-        },
-        relations: { user: true, images: true },
-        select: {
-          user: { id: true, username: true, avatar: true },
-          images: { id: true, url: true, type: true },
-        },
-      });
+      const queryBuilder = this.postsRepository
+        .createQueryBuilder('post')
+        .where('post.id = :id', { id })
+        .leftJoinAndSelect('post.images', 'images', 'images.type = :type', {
+          type: ImageType.THUMBNAIL,
+        })
+        .leftJoin('post.user', 'user')
+        .addSelect(['user.id', 'user.username', 'user.avatar'])
+        .leftJoinAndSelect(
+          'post.likes',
+          'likes',
+          'likes.target_type = :target_type AND likes.user_id = :userId',
+          {
+            target_type: LikeType.POST,
+            userId: user.id,
+          },
+        )
+        .loadRelationCountAndMap('post.likeCount', 'post.likes')
+        .loadRelationCountAndMap('post.commentCount', 'post.comments');
+
+      if (isDraft !== undefined && isDraft !== null) {
+        queryBuilder.andWhere('post.is_draft = :is_draft', {
+          is_draft: isDraft,
+        });
+      }
+
+      if (isPublished !== undefined && isPublished !== null) {
+        queryBuilder.andWhere('post.is_published = :is_published', {
+          is_published: isPublished,
+        });
+      }
+
+      if (status !== undefined && status !== null) {
+        queryBuilder.andWhere('post.status = :status', {
+          status,
+        });
+      }
+
+      const post = await queryBuilder.getOne();
 
       if (!post) {
         throw new NotFoundException('Post not found');
@@ -266,9 +325,32 @@ export class PostsService {
         AccessControl.checkAdminOrUserAccess(user, post.user.id);
       }
 
-      return plainToInstance(Post, post);
+      if (post.user.id !== user.id) {
+        await this.incrementPostView(post.id);
+      }
+
+      return {
+        ...plainToInstance(Post, post),
+        likes: undefined,
+        isLiked: post.likes.length > 0,
+      };
     } catch (error) {
       this.handleError(error, 'Get post detail failed');
+    }
+  }
+
+  private async incrementPostView(postId: number) {
+    try {
+      await this.postsRepository
+        .createQueryBuilder()
+        .update(Post)
+        .set({
+          views: () => 'views + 1',
+        })
+        .where('id = :id', { id: postId })
+        .execute();
+    } catch (error) {
+      this.logger.error(`Failed to increment post view: ${error.message}`);
     }
   }
 
@@ -298,11 +380,20 @@ export class PostsService {
     }
   }
 
-  async remove(id: number) {
+  async remove(id: number, user: User) {
     try {
       const post = await this.findOnePostAllRelations(id);
 
-      return await this.postsRepository.softRemove(post);
+      AccessControl.checkUserAccess(user, post.user.id);
+
+      await Promise.all([
+        this.postsRepository.softRemove(post),
+        this.postsRepository.update(id, {
+          status: PostStatus.DELETED,
+        }),
+      ]);
+
+      return true;
     } catch (error) {
       this.handleError(error, 'Delete post failed');
     }
@@ -310,8 +401,22 @@ export class PostsService {
 
   async restore(id: number, user: User) {
     try {
-      const post = await this.isExistPostAndCheckAccess(id, user);
-      return await this.postsRepository.recover(post);
+      const post = await this.findOnePostAllRelations(id, true);
+
+      if (!post) {
+        throw new NotFoundException('Post not found');
+      }
+
+      AccessControl.checkUserAccess(user, post.user.id);
+
+      await Promise.all([
+        this.postsRepository.recover(post),
+        this.postsRepository.update(id, {
+          status: PostStatus.APPROVED,
+        }),
+      ]);
+
+      return true;
     } catch (error) {
       this.handleError(error, 'Restore post failed');
     }
@@ -342,7 +447,7 @@ export class PostsService {
         .limit(size)
         .offset((page - 1) * size);
 
-      return await this.getPaginatedPosts(queryBuilder, page, size);
+      return await responsePagination(queryBuilder, page, size, Post);
     } catch (error) {
       this.handleError(error, 'Search posts failed');
     }
@@ -400,103 +505,6 @@ export class PostsService {
     }
   }
 
-  async adminGetRemovedPosts(query: QueryListDto) {
-    try {
-      const { page, size, orderBy } = query;
-
-      const queryBuilder = this.postsRepository
-        .createQueryBuilder('post')
-        .where(
-          'post.status = :status AND post.removed_at IS NOT NULL AND post.removed_by_admin_id IS NOT NULL',
-          {
-            status: PostStatus.DELETED,
-          },
-        )
-        .leftJoin('post.user', 'user')
-        .addSelect(['user.id', 'user.username', 'user.avatar'])
-        .leftJoin('post.removedByAdmin', 'removedByAdmin')
-        .addSelect([
-          'removedByAdmin.id',
-          'removedByAdmin.username',
-          'removedByAdmin.avatar',
-        ])
-        .leftJoin('post.images', 'images', 'images.type = :type', {
-          type: ImageType.THUMBNAIL,
-        })
-        .addSelect(['images.id', 'images.url', 'images.type'])
-        .orderBy('post.removed_at', orderBy)
-        .limit(size)
-        .offset((page - 1) * size);
-
-      return await this.getPaginatedPosts(queryBuilder, page, size);
-    } catch (error) {
-      this.handleError(error, 'Admin get removed posts failed');
-    }
-  }
-
-  async adminGetRemovedPostsByUser(query: QueryListDto) {
-    try {
-      const { page, size, orderBy } = query;
-
-      const queryBuilder = this.postsRepository
-        .createQueryBuilder('post')
-        .where('post.status = :status AND post.deleted_at IS NOT NULL', {
-          status: PostStatus.DELETED,
-        })
-        .leftJoin('post.user', 'user')
-        .addSelect(['user.id', 'user.username', 'user.avatar'])
-        .leftJoin('post.images', 'images', 'images.type = :type', {
-          type: ImageType.THUMBNAIL,
-        })
-        .addSelect(['images.id', 'images.url', 'images.type'])
-        .orderBy('post.deleted_at', orderBy)
-        .limit(size)
-        .offset((page - 1) * size);
-
-      return await this.getPaginatedPosts(queryBuilder, page, size);
-    } catch (error) {
-      this.handleError(error, 'Admin get removed posts by user failed');
-    }
-  }
-
-  async adminGetRemovedPostDetail(id: number) {
-    try {
-      return await this.postsRepository.findOne({
-        where: {
-          id,
-          removedByAdmin: Not(IsNull()),
-          removedAt: Not(IsNull()),
-          status: PostStatus.DELETED,
-        },
-        relations: { removedByAdmin: true },
-      });
-    } catch (error) {
-      this.handleError(error, 'Admin get removed post detail failed');
-    }
-  }
-
-  async adminRemovePost(deletePostDto: DeletePostDto, user: User) {
-    try {
-      return await this.postsRepository.update(deletePostDto.id, {
-        status: PostStatus.DELETED,
-        removedReason: deletePostDto.removedReason,
-        removedByAdmin: user,
-        removedAt: new Date(),
-      });
-    } catch (error) {
-      this.handleError(error, 'Admin remove post failed');
-    }
-  }
-
-  async adminRestorePost(restorePostDto: RestorePostDto) {
-    return await this.postsRepository.update(restorePostDto.id, {
-      removedByAdmin: null,
-      removedAt: null,
-      status: PostStatus.APPROVED,
-      removedReason: null,
-    });
-  }
-
   async permanentlyDeleteDraftPost(id: number, user: User) {
     try {
       const post = await this.isExistPostAndCheckAccess(id, user);
@@ -508,6 +516,31 @@ export class PostsService {
       return await this.postsRepository.delete(id);
     } catch (error) {
       this.handleError(error, 'Permanently delete draft post failed');
+    }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+    timeZone: 'Asia/Ho_Chi_Minh',
+  })
+  async handleDeleteExpiredPosts() {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const expiredPosts = await this.postsRepository.find({
+        where: {
+          status: PostStatus.DELETED,
+          deletedAt: LessThan(thirtyDaysAgo),
+        },
+        withDeleted: true,
+      });
+
+      if (expiredPosts.length > 0) {
+        await this.postsRepository.remove(expiredPosts);
+        this.logger.log(`Deleted ${expiredPosts.length} expired posts`);
+      }
+    } catch (error) {
+      this.logger.error('Failed to delete expired posts:', error);
     }
   }
 }

@@ -95,6 +95,9 @@ export const PERMISSIONS_USER_ONLY = [
   Permission.UPDATE_TO_DRAFT,
   Permission.UPDATE_POST,
   Permission.PERMANENTLY_DELETE_POST,
+  Permission.CREATE_COMMENT,
 ];
 
 export const REGEX_USERNAME = /^[a-zA-Z0-9_]{3,20}$/;
+
+export const ROLES_KEY = 'roles';

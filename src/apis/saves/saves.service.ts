@@ -7,6 +7,8 @@ import { Repository } from 'typeorm';
 import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { plainToInstance } from 'class-transformer';
 import { AccessControl } from '@libs/utils/access-control.util';
+import { Post } from '@apis/posts/entities/post.entity';
+import { PostStatus } from '@libs/enums';
 
 @Injectable()
 export class SavesService {
@@ -24,23 +26,40 @@ export class SavesService {
 
   async savePost(createSaveDto: CreateSaveDto, user: User) {
     try {
-      const isExist = await this.saveRepository.findOne({
-        where: {
-          postId: createSaveDto.postId,
-          userId: user.id,
+      return await this.saveRepository.manager.transaction(
+        async (transaction) => {
+          const post = await transaction.findOne(Post, {
+            where: {
+              id: createSaveDto.postId,
+              isDraft: false,
+              status: PostStatus.APPROVED,
+              isPublished: true,
+            },
+          });
+
+          if (!post) {
+            throw new BadRequestException('Post not found');
+          }
+
+          const isExist = await transaction.findOne(Save, {
+            where: {
+              postId: createSaveDto.postId,
+              userId: user.id,
+            },
+          });
+
+          if (isExist) {
+            throw new BadRequestException('Post already saved');
+          }
+
+          const save = transaction.create(Save, {
+            postId: createSaveDto.postId,
+            userId: user.id,
+          });
+
+          return plainToInstance(Save, await transaction.save(save));
         },
-      });
-
-      if (isExist) {
-        throw new BadRequestException('Post already saved');
-      }
-
-      const save = this.saveRepository.create({
-        postId: createSaveDto.postId,
-        userId: user.id,
-      });
-
-      return plainToInstance(Save, await this.saveRepository.save(save));
+      );
     } catch (error) {
       this.handleError(error, 'Error saving post');
     }
@@ -48,20 +67,37 @@ export class SavesService {
 
   async unSavePost(createSaveDto: CreateSaveDto, user: User) {
     try {
-      const isExist = await this.saveRepository.findOne({
-        where: {
-          postId: createSaveDto.postId,
-          userId: user.id,
+      return await this.saveRepository.manager.transaction(
+        async (transaction) => {
+          const post = await transaction.findOne(Post, {
+            where: {
+              id: createSaveDto.postId,
+              isDraft: false,
+              status: PostStatus.APPROVED,
+              isPublished: true,
+            },
+          });
+
+          if (!post) {
+            throw new BadRequestException('Post not found');
+          }
+
+          const isExist = await transaction.findOne(Save, {
+            where: {
+              postId: createSaveDto.postId,
+            },
+          });
+          if (!isExist) {
+            throw new BadRequestException('Post not saved');
+          }
+
+          AccessControl.checkUserAccess(user, isExist.userId);
+
+          await transaction.delete(Save, isExist.id);
+
+          return true;
         },
-      });
-
-      AccessControl.checkUserAccess(user, isExist.user.id);
-
-      if (!isExist) {
-        throw new BadRequestException('Post not saved');
-      }
-
-      await this.saveRepository.delete(isExist.id);
+      );
     } catch (error) {
       this.handleError(error, 'Error un-saving post');
     }

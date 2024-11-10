@@ -14,6 +14,7 @@ import {
   ManyToMany,
   ManyToOne,
   OneToMany,
+  OneToOne,
 } from 'typeorm';
 
 @Entity()
@@ -39,7 +40,10 @@ export class Post extends BaseEntity {
   @Column({ type: 'timestamp', nullable: true, name: 'removed_at' })
   removedAt: Date;
 
-  @OneToMany(() => Image, (image) => image.post, {
+  @Column({ type: 'int', default: 0 })
+  views: number;
+
+  @OneToOne(() => Image, (image) => image.post, {
     cascade: true,
     onDelete: 'CASCADE',
   })
@@ -80,9 +84,7 @@ export class Post extends BaseEntity {
   @JoinColumn({ name: 'removed_by_admin_id' })
   removedByAdmin: User;
 
-  @ManyToMany(() => Category, (category) => category.posts, {
-    cascade: true,
-  })
+  @ManyToMany(() => Category, (category) => category.posts)
   @JoinTable({
     name: 'post_categories',
     joinColumn: {

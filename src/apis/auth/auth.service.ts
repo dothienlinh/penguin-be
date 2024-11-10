@@ -1,4 +1,3 @@
-import { CreateUserDto } from '@apis/users/dto/create-user.dto';
 import { User } from '@apis/users/entities/user.entity';
 import { UsersService } from '@apis/users/users.service';
 import { RedisService } from '@libs/configs/redis/redis.service';
@@ -17,6 +16,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import { CreateUserFacebookDto } from '@apis/users/dto/create-user-facebook.dto';
 import { CreateUserGoogleDto } from '@apis/users/dto/create-user-google.dto';
 import { generateOtpCode } from '@libs/utils/otpCode.utils';
+import { SignupDto } from '@apis/users/dto/signup.dto';
 
 @Injectable()
 export class AuthService {
@@ -106,9 +106,9 @@ export class AuthService {
     }
   }
 
-  async signup(createUserDto: CreateUserDto) {
+  async signup(signupDto: SignupDto) {
     try {
-      const { otpCode, email, username } = createUserDto;
+      const { otpCode, email, username } = signupDto;
       const user = await this.usersService.findOneByFields({
         key: 'username',
         value: username,
@@ -128,7 +128,7 @@ export class AuthService {
 
       await this.redisService.del(`${RedisKey.OTP_REGISTER}:${email}`);
 
-      return await this.usersService.create(createUserDto);
+      return await this.usersService.create(signupDto);
     } catch (error) {
       this.handleError(error, 'Signup failed');
     }

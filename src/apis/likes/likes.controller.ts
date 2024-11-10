@@ -29,40 +29,20 @@ export class LikesController {
     return await this.likesService.listUserLikedPost(+id, query);
   }
 
-  @Post('post')
-  @ApiOperation({ summary: 'Like a post' })
-  @ResponseMessage('Like a post successfully')
-  async likePost(
+  @Post('')
+  @ApiOperation({ summary: 'Like a target' })
+  @ResponseMessage('Like a target successfully')
+  async likeTarget(
     @Body() createLikeDto: CreateLikeDto,
     @CurrentUser() user: User,
   ) {
     return await this.likesService.like(createLikeDto, user);
   }
 
-  @Delete('post')
-  @ApiOperation({ summary: 'Unlike a post' })
-  @ResponseMessage('Unlike a post successfully')
-  async unLikePost(
-    @Body() createLikeDto: CreateLikeDto,
-    @CurrentUser() user: User,
-  ) {
-    return await this.likesService.unLike(createLikeDto, user);
-  }
-
-  @Post('comment')
-  @ApiOperation({ summary: 'Like a comment' })
-  @ResponseMessage('Like a comment successfully')
-  async likeComment(
-    @Body() createLikeDto: CreateLikeDto,
-    @CurrentUser() user: User,
-  ) {
-    return await this.likesService.like(createLikeDto, user);
-  }
-
-  @Delete('comment')
-  @ApiOperation({ summary: 'Unlike a comment' })
-  @ResponseMessage('Unlike a comment successfully')
-  async unLikeComment(
+  @Delete('')
+  @ApiOperation({ summary: 'Unlike a target' })
+  @ResponseMessage('Unlike a target successfully')
+  async unLikeTarget(
     @Body() createLikeDto: CreateLikeDto,
     @CurrentUser() user: User,
   ) {

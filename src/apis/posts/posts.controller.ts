@@ -91,6 +91,15 @@ export class PostsController {
     return await this.postsService.getDeletedPosts(query, user);
   }
 
+  @Get('deleted/:id')
+  @ApiOperation({ summary: 'Get detail deleted post' })
+  async getDetailDeletedPost(
+    @Param('id') id: number,
+    @CurrentUser() user: User,
+  ) {
+    return await this.postsService.getDetailDeletedPost(+id, user);
+  }
+
   @Get('saves')
   @ApiOperation({ summary: 'List all saves of post' })
   async listSaves(@Query() query: QueryListDto, @CurrentUser() user: User) {
@@ -124,11 +133,10 @@ export class PostsController {
     return await this.postsService.update(+id, updatePostDto, user);
   }
 
-  @Permissions(Permission.DELETE_POST)
   @Delete(':id')
   @ApiOperation({ summary: 'Delete post' })
-  async remove(@Param('id') id: number) {
-    return await this.postsService.remove(+id);
+  async remove(@Param('id') id: number, @CurrentUser() user: User) {
+    return await this.postsService.remove(+id, user);
   }
 
   @Permissions(Permission.UPDATE_POST)

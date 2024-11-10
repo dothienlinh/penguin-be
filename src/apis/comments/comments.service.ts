@@ -8,8 +8,10 @@ import { Repository } from 'typeorm';
 import { CreateCommentDto } from './dto/create-comment.dto';
 import { Comment } from './entities/comment.entity';
 import { PostsService } from '@apis/posts/posts.service';
-import { ListCommentDto } from './dto/list-comment.dto';
 import { AccessControl } from '@libs/utils/access-control.util';
+import { QueryListDto } from '@libs/base/base.dto';
+import { responsePagination } from '@libs/utils/response-pagination.util';
+import { LikeType } from '@libs/enums';
 
 @Injectable()
 export class CommentsService {
@@ -38,9 +40,7 @@ export class CommentsService {
     try {
       const replyComments = await this.commentsRepository
         .createQueryBuilder('comment')
-        .leftJoin('comment.likes', 'likes')
         .loadRelationCountAndMap('comment.likeCount', 'comment.likes')
-        .leftJoin('comment.replyComments', 'replyComments')
         .loadRelationCountAndMap(
           'comment.replyCommentCount',
           'comment.replyComments',
@@ -83,36 +83,92 @@ export class CommentsService {
     }
   }
 
-  async listCommentPost(postId: number, query: ListCommentDto) {
+  async listCommentPost(postId: number, query: QueryListDto, user: User) {
     try {
       await this.postsService.isPostExist(postId);
 
-      const { orderBy, page, parentCommentId, size } = query;
+      const { orderBy, page, size } = query;
 
-      const comments = await this.commentsRepository
+      const queryBuilder = this.commentsRepository
         .createQueryBuilder('comment')
-        .leftJoin('comment.likes', 'likes')
         .loadRelationCountAndMap('comment.likeCount', 'comment.likes')
-        .leftJoin('comment.replyComments', 'replyComments')
         .loadRelationCountAndMap(
           'comment.replyCommentCount',
           'comment.replyComments',
         )
         .where(
-          `comment.post_id = :postId ${
-            parentCommentId
-              ? 'AND comment.parent_comment_id = :parentCommentId'
-              : ''
-          }`,
-          { postId, ...(parentCommentId && { parentCommentId }) },
+          `comment.post_id = :postId AND comment.parent_comment_id IS NULL`,
+          {
+            postId,
+          },
+        )
+        .leftJoin('comment.user', 'user')
+        .addSelect(['user.id', 'user.username', 'user.avatar'])
+        .leftJoinAndSelect(
+          'comment.likes',
+          'likes',
+          'likes.user_id = :userId AND likes.target_type = :targetType',
+          {
+            userId: user.id,
+            targetType: LikeType.COMMENT,
+          },
         )
         .orderBy('comment.created_at', orderBy)
         .limit(size)
-        .offset((page - 1) * size)
-        .getMany();
-      return plainToInstance(Comment, comments);
+        .offset((page - 1) * size);
+
+      const result = await responsePagination(
+        queryBuilder,
+        page,
+        size,
+        Comment,
+      );
+
+      return {
+        ...result,
+        result: result.result.map((comment) => ({
+          ...comment,
+          likes: undefined,
+          isLiked: comment.likes.length > 0,
+        })),
+      };
     } catch (error) {
       this.handleError(error, 'Get comments failed');
+    }
+  }
+
+  async listReplyComment(
+    commentId: number,
+    postId: number,
+    query: QueryListDto,
+  ) {
+    try {
+      await Promise.all([
+        this.postsService.isPostExist(postId),
+        this.findOne(commentId),
+      ]);
+
+      const { orderBy, page, size } = query;
+
+      const queryBuilder = this.commentsRepository
+        .createQueryBuilder('comment')
+        .distinct(true)
+        .loadRelationCountAndMap('comment.likeCount', 'comment.likes')
+        .loadRelationCountAndMap(
+          'comment.replyCommentCount',
+          'comment.replyComments',
+        )
+        .leftJoin('comment.user', 'user')
+        .addSelect(['user.id', 'user.username', 'user.avatar'])
+        .where('comment.parent_comment_id = :id', { id: commentId })
+        .andWhere('comment.post_id = :postId', { postId })
+        .orderBy('comment.created_at', orderBy)
+        .limit(size)
+        .offset((page - 1) * size);
+
+      return await responsePagination(queryBuilder, page, size, Comment);
+    } catch (error) {
+      this.handleError(error, 'Get reply comments failed');
     }
   }
 
@@ -137,7 +193,10 @@ export class CommentsService {
         })
         .save();
 
-      return plainToInstance(Comment, comment);
+      return {
+        ...plainToInstance(Comment, comment),
+        user: { id: user.id, avatar: user.avatar, username: user.username },
+      };
     } catch (error) {
       this.handleError(error, 'Create comment failed');
     }

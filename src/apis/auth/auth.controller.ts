@@ -15,13 +15,13 @@ import { LoginDto } from './dto/login.dto';
 import { ResponseMessage } from '@libs/decorators/responseMessage.decorator';
 import { CurrentUser } from '@libs/decorators/user.decorator';
 import { Request, Response } from 'express';
-import { CreateUserDto } from '@apis/users/dto/create-user.dto';
 import { ConfigService } from '@nestjs/config';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { User } from '@apis/users/entities/user.entity';
 import { FacebookAuthGuard } from '@libs/guards/facebook-auth.guard';
 import { GoogleAuthGuard } from '@libs/guards/google-auth.guard';
+import { SignupDto } from '@apis/users/dto/signup.dto';
 
 @ApiTags('Auth')
 @Controller('auth')
@@ -49,8 +49,8 @@ export class AuthController {
   @Post('signup')
   @ApiOperation({ summary: 'Signup' })
   @ResponseMessage('Signup successful')
-  async signup(@Body() createUserDto: CreateUserDto) {
-    return await this.authService.signup(createUserDto);
+  async signup(@Body() signupDto: SignupDto) {
+    return await this.authService.signup(signupDto);
   }
 
   @Post('logout')

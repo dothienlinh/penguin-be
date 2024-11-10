@@ -14,9 +14,9 @@ import { CreateCommentDto } from './dto/create-comment.dto';
 import { ResponseMessage } from '@libs/decorators/responseMessage.decorator';
 import { CurrentUser } from '@libs/decorators/user.decorator';
 import { User } from '@apis/users/entities/user.entity';
-import { ListCommentDto } from './dto/list-comment.dto';
 import { Permissions } from '@libs/decorators/permissions.decorator';
 import { Permission } from '@libs/enums';
+import { QueryListDto } from '@libs/base/base.dto';
 
 @ApiTags('Comments')
 @Controller('comments')
@@ -34,16 +34,34 @@ export class CommentsController {
     return await this.commentsService.createComment(createCommentDto, user);
   }
 
-  @Get('comments/:postId')
+  @Get('posts/:postId')
   @ApiOperation({
-    summary: 'Get list comment of post or list reply comment of comment',
+    summary: 'Get list comment of post comment',
   })
   @ResponseMessage('Get list comment of post successfully')
   async getListCommentOfPost(
     @Param('postId') postId: number,
-    @Query() query: ListCommentDto,
+    @Query() query: QueryListDto,
+    @CurrentUser() user: User,
   ) {
-    return await this.commentsService.listCommentPost(+postId, query);
+    return await this.commentsService.listCommentPost(+postId, query, user);
+  }
+
+  @Get('posts/:postId/parent-comment/:commentId/replies')
+  @ApiOperation({
+    summary: 'Get list reply comment of comment',
+  })
+  @ResponseMessage('Get list reply comment of comment successfully')
+  async getListReplyCommentOfComment(
+    @Param('commentId') commentId: number,
+    @Param('postId') postId: number,
+    @Query() query: QueryListDto,
+  ) {
+    return await this.commentsService.listReplyComment(
+      +commentId,
+      +postId,
+      query,
+    );
   }
 
   @Patch(':id/restore')

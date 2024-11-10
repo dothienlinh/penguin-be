@@ -11,6 +11,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
@@ -20,6 +21,8 @@ import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
 import { UsersService } from './users.service';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { QueryListDto } from '@libs/base/base.dto';
+import { SearchUserDto } from './dto/search-user.dto';
 
 @ApiTags('Users')
 @Controller('users')
@@ -33,30 +36,31 @@ export class UsersController {
     return await this.usersService.findAll();
   }
 
-  @Permissions(Permission.READ_USER)
-  @Get('followers')
-  async getFollowers(@CurrentUser() user: User) {
-    return this.usersService.getFollowers(user.id);
+  @Get('search')
+  async searchUser(@Query() query: SearchUserDto) {
+    return this.usersService.searchUser(query);
   }
 
   @Permissions(Permission.READ_USER)
   @Get('following')
-  async getFollowing(@CurrentUser() user: User) {
-    return this.usersService.getFollowing(user.id);
+  async getFollowers(@CurrentUser() user: User, @Query() query: QueryListDto) {
+    return this.usersService.getFollowers(user.id, query);
+  }
+
+  @Permissions(Permission.READ_USER)
+  @Get('followers')
+  async getFollowing(@CurrentUser() user: User, @Query() query: QueryListDto) {
+    return this.usersService.getFollowing(user.id, query);
   }
 
   @Permissions(Permission.READ_USER)
   @Get(':username')
   @ApiOperation({ summary: 'Get user by username' })
-  async findOne(@Param('username') username: string) {
-    return await this.usersService.findOneByUsername(username);
-  }
-
-  @Permissions(Permission.READ_USER)
-  @Get(':id/profile')
-  @ApiOperation({ summary: 'Get profile user' })
-  async getProfileUser(@Param('id') id: number) {
-    return await this.usersService.getProfileUser(id);
+  async findOne(
+    @Param('username') username: string,
+    @CurrentUser() user: User,
+  ) {
+    return await this.usersService.findOneByUsername(username, user);
   }
 
   @Permissions(Permission.UPDATE_USER)
@@ -88,15 +92,13 @@ export class UsersController {
     return await this.usersService.update(updateUserDto, avatarUrl, user);
   }
 
-  @Permissions(Permission.UPDATE_USER)
-  @Patch(':id/activate')
+  @Patch('activate')
   @ApiOperation({ summary: 'Activate user' })
   async activate(@CurrentUser() user: User) {
     return await this.usersService.updateActivateUser(true, user);
   }
 
-  @Permissions(Permission.UPDATE_USER)
-  @Patch(':id/deactivate')
+  @Patch('deactivate')
   @ApiOperation({ summary: 'Deactivate user' })
   async deactivate(@CurrentUser() user: User) {
     return await this.usersService.updateActivateUser(false, user);

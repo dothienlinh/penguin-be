@@ -111,10 +111,19 @@ export enum Permission {
   WRITE_CATEGORY = 'write_category',
   DELETE_CATEGORY = 'delete_category',
   UPDATE_CATEGORY = 'update_category',
+}
 
-  // MAIL
-  READ_MAIL = 'read_mail',
-  WRITE_MAIL = 'write_mail',
-  DELETE_MAIL = 'delete_mail',
-  UPDATE_MAIL = 'update_mail',
+export enum SortBy {
+  NEWEST = 'newest',
+  OLDEST = 'oldest',
+  USERNAME = 'username',
+  EMAIL = 'email',
+}
+
+export enum UserStatus {
+  ALL = 'all',
+  ACTIVE = 'active',
+  BLOCKED = 'blocked',
+  REMOVED_BY_ADMIN = 'removedByAdmin',
+  REMOVED_BY_USER = 'removedByUser',
 }
