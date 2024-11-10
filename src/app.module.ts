@@ -22,6 +22,8 @@ import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
+import { RolesGuard } from '@libs/guards/roles.guard';
 
 @Module({
   imports: [
@@ -50,6 +52,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     DatabasesModule,
     AdminModule,
     SavesModule,
+    ScheduleModule.forRoot(),
   ],
   providers: [
     {
@@ -60,6 +63,10 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     {
       provide: APP_GUARD,
       useClass: PermissionGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: RolesGuard,
     },
   ],
 })

@@ -1,9 +1,10 @@
 import { PermissionsService } from '@apis/permissions/permissions.service';
 import { RolesService } from '@apis/roles/roles.service';
-import { Roles } from '@libs/enums';
+import { OrderBy, PostStatus, Roles } from '@libs/enums';
 import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { hashPassword } from '@libs/utils/password.utils';
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   Logger,
@@ -12,15 +13,17 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
-import { In, IsNull, Not, Repository, SelectQueryBuilder } from 'typeorm';
+import { In, IsNull, LessThan, Not, Repository } from 'typeorm';
 import { CreateUserFacebookDto } from './dto/create-user-facebook.dto';
 import { CreateUserGoogleDto } from './dto/create-user-google.dto';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
-import { DeleteUserDto, RestoreUserDto } from '@apis/admin/dto/action-user.dto';
 import { QueryListDto } from '@libs/base/base.dto';
 import { UPLOAD_FOLDER } from '@libs/constants';
+import { Cron, CronExpression } from '@nestjs/schedule';
+import { SearchUserDto } from './dto/search-user.dto';
+import { responsePagination } from '@libs/utils/response-pagination.util';
 
 interface FindOneByFields {
   key: keyof User;
@@ -36,6 +39,21 @@ export class UsersService {
     private readonly configService: ConfigService,
     private readonly permissionsService: PermissionsService,
   ) {}
+
+  private readonly selectUserProfile = [
+    'user.id',
+    'user.address',
+    'user.avatar',
+    'user.bio',
+    'user.birthDate',
+    'user.createdAt',
+    'user.email',
+    'user.gender',
+    'user.isActive',
+    'user.isPublished',
+    'user.updatedAt',
+    'user.username',
+  ];
 
   private readonly logger = new Logger(UsersService.name);
 
@@ -60,23 +78,43 @@ export class UsersService {
     return plainToInstance(User, user);
   }
 
-  private async getPaginatedUsers(
-    queryBuilder: SelectQueryBuilder<User>,
+  private createBuilderGetProfileUser() {
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .distinct(true)
+      .loadRelationCountAndMap('user.postCount', 'user.posts', 'posts', (qb) =>
+        qb.where(
+          'posts.isDraft = :isDraft AND posts.status = :status AND posts.isPublished = :isPublished',
+          {
+            isDraft: false,
+            status: PostStatus.APPROVED,
+            isPublished: true,
+          },
+        ),
+      )
+      .loadRelationCountAndMap('user.followerCount', 'user.followers')
+      .loadRelationCountAndMap('user.followingCount', 'user.following');
+  }
+
+  private createBaseUserFollowQuery(
     page: number,
     size: number,
+    orderBy: OrderBy,
+    target?: 'followers' | 'following',
   ) {
-    const [users, total] = await queryBuilder.getManyAndCount();
-    const totalPage = Math.ceil(total / size);
+    const targetArray: string[] = [];
 
-    return {
-      result: plainToInstance(User, users),
-      meta: {
-        totalPage,
-        currentPage: page,
-        pageSize: size,
-        totalRecords: total,
-      },
-    };
+    if (target) {
+      targetArray.push(`${target}.id`);
+    }
+
+    return this.usersRepository
+      .createQueryBuilder('user')
+      .distinct(true)
+      .select([...this.selectUserProfile, ...targetArray])
+      .orderBy('user.created_at', orderBy)
+      .limit(size)
+      .offset((page - 1) * size);
   }
 
   async isExistUser<K extends keyof User>(key: K, value: User[K]) {
@@ -129,15 +167,23 @@ export class UsersService {
     }
   }
 
-  async findOneByUsername(username: string) {
+  async findOneByUsername(username: string, currentUser: User) {
     try {
-      const user = await this.usersRepository
-        .createQueryBuilder('user')
+      const user = await this.createBuilderGetProfileUser()
+        .leftJoinAndSelect('user.followers', 'followers')
+        .select([...this.selectUserProfile, 'followers.id'])
         .where('user.username = :username', { username })
         .getOne();
 
       if (!user) throw new NotFoundException('User not found');
-      return plainToInstance(User, user);
+
+      const isFollowing = user.followers.some((f) => f.id === currentUser.id);
+
+      return {
+        ...plainToInstance(User, user),
+        isFollowing,
+        followers: undefined,
+      };
     } catch (error) {
       this.handleError(error, 'Find user by username failed');
     }
@@ -212,8 +258,7 @@ export class UsersService {
 
   async getProfileUser(id: number) {
     try {
-      const user = await this.usersRepository
-        .createQueryBuilder('user')
+      const user = await this.createBuilderGetProfileUser()
         .leftJoinAndSelect('user.role', 'role')
         .leftJoin('user.permissions', 'permissions')
         .select(['user', 'role.id', 'role.name', 'permissions.name'])
@@ -263,6 +308,38 @@ export class UsersService {
     }
   }
 
+  async searchUser(query: SearchUserDto) {
+    try {
+      const { page, size, username, orderBy, role } = query;
+      console.log(query);
+      const queryBuilder = this.createBaseUserFollowQuery(page, size, orderBy)
+        .loadRelationCountAndMap(
+          'user.postCount',
+          'user.posts',
+          'posts',
+          (qb) =>
+            qb.where(
+              'posts.isDraft = :isDraft AND posts.status = :status AND posts.isPublished = :isPublished',
+              {
+                isDraft: false,
+                status: PostStatus.APPROVED,
+                isPublished: true,
+              },
+            ),
+        )
+        .loadRelationCountAndMap('user.followerCount', 'user.followers')
+        .leftJoinAndSelect('user.role', 'role')
+        .where('user.username ILIKE :username AND role.name = :role', {
+          username: `%${username}%`,
+          role,
+        });
+
+      return await responsePagination(queryBuilder, page, size, User);
+    } catch (error) {
+      this.handleError(error, 'Search user failed');
+    }
+  }
+
   async findOneById(id: number) {
     try {
       const user = await this.usersRepository.findOneBy({ id: +id });
@@ -277,24 +354,55 @@ export class UsersService {
     }
   }
 
-  async getFollowers(userId: number) {
-    const user = await this.usersRepository.findOne({
-      where: { id: userId },
-      relations: ['followers'],
-    });
-    if (!user) throw new NotFoundException('User not found');
+  async getFollowers(userId: number, query: QueryListDto) {
+    try {
+      const { page, size, orderBy } = query;
 
-    return user.followers;
+      const queryBuilder = this.createBaseUserFollowQuery(page, size, orderBy)
+        .leftJoinAndSelect('user.followers', 'followers')
+        .where('followers.id = :userId', { userId });
+
+      const result = await responsePagination(queryBuilder, page, size, User);
+
+      return {
+        ...result,
+        result: result.result.map((user) => ({
+          ...user,
+          followers: undefined,
+        })),
+      };
+    } catch (error) {
+      this.handleError(error, 'Get followers failed');
+    }
   }
 
-  async getFollowing(userId: number) {
-    const user = await this.usersRepository.findOne({
-      where: { id: userId },
-      relations: ['following'],
-    });
-    if (!user) throw new NotFoundException('User not found');
+  async getFollowing(userId: number, query: QueryListDto) {
+    try {
+      const { page, size, orderBy } = query;
 
-    return user.following;
+      const queryBuilder = this.createBaseUserFollowQuery(
+        page,
+        size,
+        orderBy,
+        'followers',
+      )
+        .leftJoinAndSelect('user.following', 'following')
+        .leftJoinAndSelect('user.followers', 'followers')
+        .where('following.id = :userId', { userId });
+
+      const result = await responsePagination(queryBuilder, page, size, User);
+
+      result.result.forEach((user) => {
+        const isFollowing = user.followers.some((f) => f.id === userId);
+        user.following = undefined;
+        user.followers = undefined;
+        (user as any).isFollowing = isFollowing;
+      });
+
+      return result;
+    } catch (error) {
+      this.handleError(error, 'Get following failed');
+    }
   }
 
   async findOneUserAllRelations(id: number, withDeleted: boolean = false) {
@@ -333,15 +441,24 @@ export class UsersService {
 
   async followUser(followingId: number, currentUser: User) {
     try {
+      if (followingId === currentUser.id) {
+        throw new BadRequestException('You cannot follow yourself');
+      }
+
       const user = await this.usersRepository.findOne({
         where: { id: followingId },
       });
       if (!user) throw new NotFoundException('User not found');
 
-      currentUser.following.push(user);
-      await this.usersRepository.save(currentUser);
+      const getCurrentUser = await this.usersRepository.findOne({
+        where: { id: currentUser.id },
+        relations: { following: true },
+      });
 
-      return currentUser;
+      getCurrentUser.following.push(user);
+      await this.usersRepository.save(getCurrentUser);
+
+      return true;
     } catch (error) {
       this.handleError(error, 'Follow user failed');
     }
@@ -407,77 +524,28 @@ export class UsersService {
   }
   async unfollowUser(followingId: number, currentUser: User) {
     try {
+      if (followingId === currentUser.id) {
+        throw new BadRequestException('You cannot unfollow yourself');
+      }
+
       const user = await this.usersRepository.findOne({
         where: { id: followingId },
       });
       if (!user) throw new NotFoundException('User not found');
 
-      currentUser.following = currentUser.following.filter(
+      const getCurrentUser = await this.usersRepository.findOne({
+        where: { id: currentUser.id },
+        relations: { following: true },
+      });
+
+      getCurrentUser.following = getCurrentUser.following.filter(
         (followingUser) => followingUser.id !== user.id,
       );
-      await this.usersRepository.save(currentUser);
+      await this.usersRepository.save(getCurrentUser);
 
-      return currentUser;
+      return true;
     } catch (error) {
       this.handleError(error, 'Unfollow user failed');
-    }
-  }
-
-  async adminGetRemovedUsers(query: QueryListDto) {
-    try {
-      const { page, size, orderBy } = query;
-
-      const queryBuilder = this.usersRepository
-        .createQueryBuilder('user')
-        .where(
-          'user.removed_by_admin_id IS NOT NULL AND user.removed_at IS NOT NULL',
-        )
-        .orderBy('user.removed_at', orderBy)
-        .limit(size)
-        .offset((page - 1) * size);
-
-      return this.getPaginatedUsers(queryBuilder, page, size);
-    } catch (error) {
-      this.handleError(error, 'Admin get removed users failed');
-    }
-  }
-
-  async adminGetRemovedUserDetail(id: number) {
-    try {
-      return await this.usersRepository.findOne({
-        where: {
-          id,
-          removedByAdmin: Not(IsNull()),
-          removedAt: Not(IsNull()),
-        },
-        relations: { removedByAdmin: true },
-      });
-    } catch (error) {
-      this.handleError(error, 'Admin get removed user detail failed');
-    }
-  }
-
-  async adminRemoveUser(deleteUserDto: DeleteUserDto, user: User) {
-    try {
-      return await this.usersRepository.update(deleteUserDto.id, {
-        removedByAdmin: user,
-        removedReason: deleteUserDto.removedReason,
-        removedAt: new Date(),
-      });
-    } catch (error) {
-      this.handleError(error, 'Admin remove user failed');
-    }
-  }
-
-  async adminRestoreUser(restoreUserDto: RestoreUserDto) {
-    try {
-      return await this.usersRepository.update(restoreUserDto.id, {
-        removedByAdmin: null,
-        removedAt: null,
-        removedReason: null,
-      });
-    } catch (error) {
-      this.handleError(error, 'Admin restore user failed');
     }
   }
 
@@ -493,6 +561,30 @@ export class UsersService {
       });
     } catch (error) {
       this.handleError(error, 'Admin get removed users by user failed');
+    }
+  }
+
+  @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
+    timeZone: 'Asia/Ho_Chi_Minh',
+  })
+  async handleDeleteExpiredUsers() {
+    try {
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+
+      const expiredPosts = await this.usersRepository.find({
+        where: {
+          deletedAt: LessThan(thirtyDaysAgo),
+        },
+        withDeleted: true,
+      });
+
+      if (expiredPosts.length > 0) {
+        await this.usersRepository.remove(expiredPosts);
+        this.logger.log(`Deleted ${expiredPosts.length} expired users`);
+      }
+    } catch (error) {
+      this.logger.error('Failed to delete expired posts:', error);
     }
   }
 }

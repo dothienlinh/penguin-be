@@ -43,6 +43,9 @@ export class User extends BaseEntity {
   @Column({ default: false, name: 'is_active' })
   isActive: boolean;
 
+  @Column({ type: 'boolean', default: false, name: 'is_blocked' })
+  isBlocked: boolean;
+
   @Column({ type: 'boolean', default: false, name: 'is_verified' })
   isVerified: boolean;
 
@@ -78,9 +81,11 @@ export class User extends BaseEntity {
   @Exclude()
   refreshToken: string;
 
+  @Exclude()
   @Column({ type: 'text', nullable: true, name: 'removed_reason' })
   removedReason: string;
 
+  @Exclude()
   @Column({ type: 'timestamp', nullable: true, name: 'removed_at' })
   removedAt: Date;
 
@@ -139,7 +144,7 @@ export class User extends BaseEntity {
   })
   permissions: Permission[];
 
-  @ManyToMany(() => User, (user) => user.followers)
+  @ManyToMany(() => User, (user) => user.followers, { cascade: true })
   @JoinTable({
     name: 'user_follows',
     joinColumn: { name: 'follower_id', referencedColumnName: 'id' },

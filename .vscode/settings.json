@@ -3,5 +3,5 @@
   "material-icon-theme.files.associations": {
     "main.ts": "nest"
   },
-  "cSpell.words": ["nestjs", "ormconfig", "typeorm", "unfollow"]
+  "cSpell.words": ["ILIKE", "nestjs", "ormconfig", "typeorm", "unfollow"]
 }

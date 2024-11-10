@@ -9,11 +9,22 @@ import { AdminService } from './admin.service';
 import { DeletePostDto, RestorePostDto } from './dto/action-post.dto';
 import { DeleteUserDto, RestoreUserDto } from './dto/action-user.dto';
 import { QueryListDto } from '@libs/base/base.dto';
+import { Roles } from '@libs/decorators/roles.decorator';
+import { Roles as Role } from '@libs/enums';
+import { SearchUserDto } from './dto/search.dto';
 
+@Roles(Role.ADMIN, Role.SUPER_ADMIN)
 @ApiTags('Admin')
 @Controller('admin')
 export class AdminController {
   constructor(private readonly adminService: AdminService) {}
+
+  @ApiOperation({ summary: 'Admin search user' })
+  @ResponseMessage('Admin search user successfully')
+  @Get('users/search')
+  async searchUser(@Query() query: SearchUserDto) {
+    return await this.adminService.searchUser(query);
+  }
 
   @Permissions(Permission.ADMIN_GET_REMOVED_POSTS)
   @ApiOperation({ summary: 'Admin get removed posts' })

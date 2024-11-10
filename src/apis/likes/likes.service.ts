@@ -68,6 +68,7 @@ export class LikesService {
             ? { postId: targetId }
             : { commentId: targetId }),
           user: { id: user.id },
+          targetType,
         },
       });
 
@@ -80,7 +81,8 @@ export class LikesService {
           ...(targetType === LikeType.POST
             ? { postId: targetId }
             : { commentId: targetId }),
-          user,
+          user: { id: user.id },
+          targetType,
         })
         .save();
 
@@ -100,7 +102,9 @@ export class LikesService {
             ? { postId: targetId }
             : { commentId: targetId }),
           user: { id: user.id },
+          targetType,
         },
+        relations: { user: true },
       });
 
       AccessControl.checkUserAccess(user, like.user.id);
