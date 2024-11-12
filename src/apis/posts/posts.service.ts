@@ -2,13 +2,11 @@ import { CategoriesService } from '@apis/categories/categories.service';
 import { ImagesService } from '@apis/images/images.service';
 import { User } from '@apis/users/entities/user.entity';
 import { QueryListDto } from '@libs/base/base.dto';
-import { ImageType, LikeType, OrderBy, PostStatus, Roles } from '@libs/enums';
+import { LikeType, OrderBy, PostStatus, Roles } from '@libs/enums';
 import { AccessControl } from '@libs/utils/access-control.util';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import {
   BadRequestException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -23,21 +21,17 @@ import { UploadImagePostDto } from './dto/upload-image-post.dto';
 import { Post } from './entities/post.entity';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { responsePagination } from '@libs/utils/response-pagination.util';
+import { BaseService } from '@libs/base/base.service';
 
 @Injectable()
-export class PostsService {
-  private readonly logger = new Logger(PostsService.name);
-
+export class PostsService extends BaseService {
   constructor(
     @InjectRepository(Post)
     private readonly postsRepository: Repository<Post>,
     private readonly imagesService: ImagesService,
     private readonly categoriesService: CategoriesService,
-  ) {}
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
+  ) {
+    super(PostsService.name);
   }
 
   private async isExistPostAndCheckAccess(postId: number, user: User) {
@@ -117,15 +111,31 @@ export class PostsService {
     }
 
     return queryBuilder
-      .leftJoinAndSelect('post.images', 'images', 'images.type = :type', {
-        type: ImageType.THUMBNAIL,
-      })
-      .loadRelationCountAndMap('post.likeCount', 'post.likes', 'likes', (qb) =>
-        qb.where('likes.target_type = :target_type', {
-          target_type: LikeType.POST,
-        }),
+      .leftJoinAndSelect('post.thumbnail', 'thumbnail')
+      .loadRelationCountAndMap(
+        'post.likeCount',
+        'post.likes',
+        'likes',
+        (qb) => {
+          if (withDeleted) {
+            qb.withDeleted();
+          }
+          return qb.where('likes.target_type = :target_type', {
+            target_type: LikeType.POST,
+          });
+        },
       )
-      .loadRelationCountAndMap('post.commentCount', 'post.comments')
+      .loadRelationCountAndMap(
+        'post.commentCount',
+        'post.comments',
+        'comments',
+        (qb) => {
+          if (withDeleted) {
+            qb.withDeleted();
+          }
+          return qb.where('comments.parent_comment_id IS NULL');
+        },
+      )
       .distinct(true)
       .orderBy('post.created_at', orderBy)
       .limit(size)
@@ -280,9 +290,8 @@ export class PostsService {
       const queryBuilder = this.postsRepository
         .createQueryBuilder('post')
         .where('post.id = :id', { id })
-        .leftJoinAndSelect('post.images', 'images', 'images.type = :type', {
-          type: ImageType.THUMBNAIL,
-        })
+        .leftJoinAndSelect('post.images', 'images')
+        .leftJoinAndSelect('post.thumbnail', 'thumbnail')
         .leftJoin('post.user', 'user')
         .addSelect(['user.id', 'user.username', 'user.avatar'])
         .leftJoinAndSelect(
@@ -295,7 +304,12 @@ export class PostsService {
           },
         )
         .loadRelationCountAndMap('post.likeCount', 'post.likes')
-        .loadRelationCountAndMap('post.commentCount', 'post.comments');
+        .loadRelationCountAndMap(
+          'post.commentCount',
+          'post.comments',
+          'comments',
+          (qb) => qb.where('comments.parent_comment_id IS NULL'),
+        );
 
       if (isDraft !== undefined && isDraft !== null) {
         queryBuilder.andWhere('post.is_draft = :is_draft', {
@@ -325,7 +339,7 @@ export class PostsService {
         AccessControl.checkAdminOrUserAccess(user, post.user.id);
       }
 
-      if (post.user.id !== user.id) {
+      if (post.user.id !== user.id && post.status === PostStatus.APPROVED) {
         await this.incrementPostView(post.id);
       }
 
@@ -431,9 +445,7 @@ export class PostsService {
         .distinct(true)
         .leftJoin('post.user', 'user')
         .addSelect(['user.id', 'user.username', 'user.avatar'])
-        .leftJoinAndSelect('post.images', 'images', 'images.type = :type', {
-          type: ImageType.THUMBNAIL,
-        })
+        .leftJoinAndSelect('post.thumbnail', 'thumbnail')
         .where(
           'post.is_draft = :is_draft AND post.status = :status AND post.is_published = :is_published AND post.title ILIKE :query',
           {

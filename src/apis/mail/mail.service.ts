@@ -1,31 +1,26 @@
 import { AuthService } from '@apis/auth/auth.service';
 import { UsersService } from '@apis/users/users.service';
+import { BaseService } from '@libs/base/base.service';
 import { RedisService } from '@libs/configs/redis/redis.service';
 import { RedisKey } from '@libs/enums';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { generateOtpCode } from '@libs/utils/otpCode.utils';
 import { MailerService } from '@nestjs-modules/mailer';
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import ms from 'ms';
 import { SendForgotPasswordDto } from './dto/send-forgot-password.dto';
 import { SendRegisterDto } from './dto/send-register-dto';
 import { VerifyOtpCodeDto } from './dto/verify-otp-code.dto';
 @Injectable()
-export class MailService {
+export class MailService extends BaseService {
   constructor(
     private readonly mailerService: MailerService,
     private readonly redisService: RedisService,
     private readonly usersService: UsersService,
     private readonly configService: ConfigService,
     private readonly authService: AuthService,
-  ) {}
-
-  private readonly logger = new Logger(MailService.name);
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
+  ) {
+    super(MailService.name);
   }
 
   sendOTPCode = async (email: string, key: RedisKey) => {
@@ -43,7 +38,11 @@ export class MailService {
         await this.redisService.set({
           key: `${key}:${email}`,
           value: otpCode.toString(),
-          expired: 60 * 5,
+          expired: ms(
+            this.configService.getOrThrow<string>(
+              'OTP_RESET_PASSWORD_EXPIRES_IN',
+            ),
+          ),
         });
 
         return true;

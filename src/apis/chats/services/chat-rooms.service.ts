@@ -1,26 +1,21 @@
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { plainToInstance } from 'class-transformer';
 import { UsersService } from '@apis/users/users.service';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { ChatRoom } from '../entities/chat-room.entity';
 import { CreateChatRoomDto } from '../dto/create-chat-room.dto';
 import { UpdateNameChatRoomDto } from '../dto/update-name-chat-room.dto';
+import { BaseService } from '@libs/base/base.service';
 
 @Injectable()
-export class ChatRoomsService {
+export class ChatRoomsService extends BaseService {
   constructor(
     @InjectRepository(ChatRoom)
     private readonly chatRoomsRepository: Repository<ChatRoom>,
     private readonly usersService: UsersService,
-  ) {}
-
-  private readonly logger = new Logger(ChatRoomsService.name);
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
+  ) {
+    super(ChatRoomsService.name);
   }
 
   async create(createChatRoomDto: CreateChatRoomDto) {

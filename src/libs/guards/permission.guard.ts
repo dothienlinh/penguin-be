@@ -1,23 +1,13 @@
+import { BaseService } from '@libs/base/base.service';
 import { PERMISSIONS_KEY } from '@libs/constants';
 import { Roles } from '@libs/enums';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  Logger,
-} from '@nestjs/common';
+import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 
 @Injectable()
-export class PermissionGuard implements CanActivate {
-  constructor(private reflector: Reflector) {}
-
-  private readonly logger = new Logger(PermissionGuard.name);
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
+export class PermissionGuard extends BaseService implements CanActivate {
+  constructor(private reflector: Reflector) {
+    super(PermissionGuard.name);
   }
 
   canActivate(context: ExecutionContext): boolean {

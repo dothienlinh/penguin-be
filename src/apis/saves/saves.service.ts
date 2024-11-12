@@ -1,27 +1,22 @@
-import { Injectable, Logger, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { CreateSaveDto } from './dto/create-save.dto';
 import { User } from '@apis/users/entities/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Save } from './entities/save.entity';
 import { Repository } from 'typeorm';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { plainToInstance } from 'class-transformer';
 import { AccessControl } from '@libs/utils/access-control.util';
 import { Post } from '@apis/posts/entities/post.entity';
 import { PostStatus } from '@libs/enums';
+import { BaseService } from '@libs/base/base.service';
 
 @Injectable()
-export class SavesService {
+export class SavesService extends BaseService {
   constructor(
     @InjectRepository(Save)
     private saveRepository: Repository<Save>,
-  ) {}
-
-  private readonly logger = new Logger(SavesService.name);
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
+  ) {
+    super(SavesService.name);
   }
 
   async savePost(createSaveDto: CreateSaveDto, user: User) {
