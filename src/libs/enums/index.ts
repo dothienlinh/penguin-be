@@ -51,17 +51,18 @@ export enum OrderBy {
 }
 
 export enum Permission {
-  // ADMIN
-  ADMIN_REMOVE_POST = 'admin_remove_post',
-  ADMIN_RESTORE_POST = 'admin_restore_post',
-  ADMIN_REMOVE_USER = 'admin_remove_user',
+  // ADMIN USER
+  ADMIN_GET_USERS = 'admin_get_users',
+  ADMIN_GET_USER_DETAIL = 'admin_get_user_detail',
+  ADMIN_DELETE_USER = 'admin_delete_user',
   ADMIN_RESTORE_USER = 'admin_restore_user',
-  ADMIN_GET_REMOVED_POSTS = 'admin_get_removed_posts',
-  ADMIN_GET_REMOVED_USERS = 'admin_get_removed_users',
-  ADMIN_GET_REMOVED_POST_DETAIL = 'admin_get_removed_post_detail',
-  ADMIN_GET_REMOVED_USER_DETAIL = 'admin_get_removed_user_detail',
-  ADMIN_GET_REMOVED_POSTS_BY_USER = 'admin_get_removed_posts_by_user',
-  ADMIN_GET_REMOVED_USERS_BY_USER = 'admin_get_removed_users_by_user',
+
+  // ADMIN POST
+  ADMIN_DELETE_POST = 'admin_delete_post',
+  ADMIN_RESTORE_POST = 'admin_restore_post',
+  ADMIN_GET_POST_DETAIL = 'admin_get_post_detail',
+  ADMIN_GET_POSTS = 'admin_get_posts',
+  ADMIN_GET_POSTS_OF_USER = 'admin_get_posts_of_user',
 
   // USER
   READ_USER = 'read_user',
@@ -120,10 +121,15 @@ export enum SortBy {
   EMAIL = 'email',
 }
 
-export enum UserStatus {
+export enum UserStatusQuery {
   ALL = 'all',
   ACTIVE = 'active',
   BLOCKED = 'blocked',
-  REMOVED_BY_ADMIN = 'removedByAdmin',
-  REMOVED_BY_USER = 'removedByUser',
+  DELETED_BY_ADMIN = 'deletedByAdmin',
+  DELETED_BY_USER = 'deletedByUser',
+}
+
+export enum ByRole {
+  ADMIN = 'admin',
+  USER = 'user',
 }

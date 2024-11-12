@@ -1,24 +1,19 @@
 import { Post } from '@apis/posts/entities/post.entity';
 import { ImageType } from '@libs/enums';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { In, Repository } from 'typeorm';
 import { Image } from './entities/image.entity';
 import { plainToInstance } from 'class-transformer';
+import { BaseService } from '@libs/base/base.service';
 
 @Injectable()
-export class ImagesService {
+export class ImagesService extends BaseService {
   constructor(
     @InjectRepository(Image)
     private readonly imagesRepository: Repository<Image>,
-  ) {}
-
-  private readonly logger = new Logger(ImagesService.name);
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
+  ) {
+    super(ImagesService.name);
   }
 
   async create(url: string[], post: Post, type: ImageType) {

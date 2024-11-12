@@ -1,5 +1,5 @@
 import { QueryListDto } from '@libs/base/base.dto';
-import { Roles, SortBy, UserStatus } from '@libs/enums';
+import { Roles, SortBy, UserStatusQuery } from '@libs/enums';
 import { OmitType } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
@@ -13,8 +13,8 @@ export class SearchUserDto extends OmitType(QueryListDto, ['orderBy']) {
   role?: Roles;
 
   @IsOptional()
-  @IsEnum(UserStatus)
-  status?: UserStatus;
+  @IsEnum(UserStatusQuery)
+  status?: UserStatusQuery;
 
   @IsOptional()
   @IsEnum(SortBy)

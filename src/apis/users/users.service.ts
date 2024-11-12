@@ -1,13 +1,11 @@
 import { PermissionsService } from '@apis/permissions/permissions.service';
 import { RolesService } from '@apis/roles/roles.service';
 import { OrderBy, PostStatus, Roles } from '@libs/enums';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { hashPassword } from '@libs/utils/password.utils';
 import {
   BadRequestException,
   ConflictException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -25,6 +23,7 @@ import { Cron, CronExpression } from '@nestjs/schedule';
 import { SearchUserDto } from './dto/search-user.dto';
 import { responsePagination } from '@libs/utils/response-pagination.util';
 import { SignupDto } from './dto/signup.dto';
+import { BaseService } from '@libs/base/base.service';
 
 interface FindOneByFields {
   key: keyof User;
@@ -32,14 +31,16 @@ interface FindOneByFields {
 }
 
 @Injectable()
-export class UsersService {
+export class UsersService extends BaseService {
   constructor(
     @InjectRepository(User)
     private readonly usersRepository: Repository<User>,
     private readonly rolesService: RolesService,
     private readonly configService: ConfigService,
     private readonly permissionsService: PermissionsService,
-  ) {}
+  ) {
+    super(UsersService.name);
+  }
 
   private readonly selectUserProfile = [
     'user.id',
@@ -55,13 +56,6 @@ export class UsersService {
     'user.updatedAt',
     'user.username',
   ];
-
-  private readonly logger = new Logger(UsersService.name);
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
-  }
 
   private async createUserAndSave(
     userDto: CreateUserDto | CreateUserFacebookDto | CreateUserGoogleDto,
@@ -470,10 +464,13 @@ export class UsersService {
   ) {
     try {
       const { username, ...rest } = updateUserDto;
+      let isExistUser: User | null = null;
 
-      const isExistUser = await this.usersRepository.findOne({
-        where: { username },
-      });
+      if (username) {
+        isExistUser = await this.usersRepository.findOne({
+          where: { username },
+        });
+      }
 
       if (isExistUser && isExistUser.id !== user.id) {
         throw new ConflictException('Username already exists');

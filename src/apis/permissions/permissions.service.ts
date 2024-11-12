@@ -1,9 +1,7 @@
 import { Permission as PermissionEnum } from '@libs/enums';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import {
   ConflictException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -13,19 +11,15 @@ import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { Permission } from './entities/permission.entity';
 import { PERMISSIONS_USER_ONLY } from '@libs/constants';
 import { plainToInstance } from 'class-transformer';
+import { BaseService } from '@libs/base/base.service';
 
 @Injectable()
-export class PermissionsService {
+export class PermissionsService extends BaseService {
   constructor(
     @InjectRepository(Permission)
     private readonly permissionRepository: Repository<Permission>,
-  ) {}
-
-  private readonly logger = new Logger(PermissionsService.name);
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
+  ) {
+    super(PermissionsService.name);
   }
 
   async isExist(name: PermissionEnum) {

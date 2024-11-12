@@ -82,18 +82,14 @@ export class User extends BaseEntity {
   refreshToken: string;
 
   @Exclude()
-  @Column({ type: 'text', nullable: true, name: 'removed_reason' })
-  removedReason: string;
+  @Column({ type: 'text', nullable: true, name: 'deleted_reason' })
+  deletedReason: string;
 
-  @Exclude()
-  @Column({ type: 'timestamp', nullable: true, name: 'removed_at' })
-  removedAt: Date;
+  @OneToMany(() => User, (user) => user.deletedByAdmin)
+  deletedUsers: User[];
 
-  @OneToMany(() => User, (user) => user.removedByAdmin)
-  removedUsers: User[];
-
-  @OneToMany(() => Post, (post) => post.removedByAdmin)
-  removedPosts: Post[];
+  @OneToMany(() => Post, (post) => post.deletedByAdmin)
+  deletedPosts: Post[];
 
   @OneToMany(() => Post, (post) => post.user, {
     cascade: true,
@@ -129,9 +125,9 @@ export class User extends BaseEntity {
   @JoinColumn({ name: 'role_id' })
   role: Role;
 
-  @ManyToOne(() => User, (user) => user.removedUsers)
-  @JoinColumn({ name: 'removed_by_admin_id' })
-  removedByAdmin: User;
+  @ManyToOne(() => User, (user) => user.deletedUsers)
+  @JoinColumn({ name: 'deleted_by_admin_id' })
+  deletedByAdmin: User;
 
   @ManyToMany(() => Permission, (permission) => permission.users, {
     cascade: true,

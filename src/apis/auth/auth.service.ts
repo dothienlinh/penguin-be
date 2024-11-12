@@ -3,9 +3,8 @@ import { UsersService } from '@apis/users/users.service';
 import { RedisService } from '@libs/configs/redis/redis.service';
 import { RedisKey, Roles } from '@libs/enums';
 import { Payload } from '@libs/interfaces';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { comparePassword } from '@libs/utils/password.utils';
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
@@ -17,20 +16,17 @@ import { CreateUserFacebookDto } from '@apis/users/dto/create-user-facebook.dto'
 import { CreateUserGoogleDto } from '@apis/users/dto/create-user-google.dto';
 import { generateOtpCode } from '@libs/utils/otpCode.utils';
 import { SignupDto } from '@apis/users/dto/signup.dto';
+import { BaseService } from '@libs/base/base.service';
 
 @Injectable()
-export class AuthService {
-  private readonly logger = new Logger(AuthService.name);
+export class AuthService extends BaseService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly configService: ConfigService,
     private readonly redisService: RedisService,
-  ) {}
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
+  ) {
+    super(AuthService.name);
   }
 
   async validateUser(email: string, password: string) {

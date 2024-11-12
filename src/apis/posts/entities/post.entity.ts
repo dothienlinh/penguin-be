@@ -34,11 +34,8 @@ export class Post extends BaseEntity {
   @Column({ type: 'boolean', default: true, name: 'is_draft' })
   isDraft: boolean;
 
-  @Column({ type: 'text', nullable: true, name: 'removed_reason' })
-  removedReason: string;
-
-  @Column({ type: 'timestamp', nullable: true, name: 'removed_at' })
-  removedAt: Date;
+  @Column({ type: 'text', nullable: true, name: 'deleted_reason' })
+  deletedReason: string;
 
   @Column({ type: 'int', default: 0 })
   views: number;
@@ -80,9 +77,9 @@ export class Post extends BaseEntity {
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @ManyToOne(() => User, (user) => user.removedPosts)
-  @JoinColumn({ name: 'removed_by_admin_id' })
-  removedByAdmin: User;
+  @ManyToOne(() => User, (user) => user.deletedPosts)
+  @JoinColumn({ name: 'deleted_by_admin_id' })
+  deletedByAdmin: User;
 
   @ManyToMany(() => Category, (category) => category.posts)
   @JoinTable({

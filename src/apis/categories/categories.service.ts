@@ -1,7 +1,6 @@
 import {
   ConflictException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto';
@@ -9,20 +8,15 @@ import { UpdateCategoryDto } from './dto/update-category.dto';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Category } from './entities/category.entity';
 import { In, IsNull, Not, Repository } from 'typeorm';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
+import { BaseService } from '@libs/base/base.service';
 
 @Injectable()
-export class CategoriesService {
+export class CategoriesService extends BaseService {
   constructor(
     @InjectRepository(Category)
     private readonly categoryRepository: Repository<Category>,
-  ) {}
-
-  private readonly logger = new Logger(CategoriesService.name);
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
+  ) {
+    super(CategoriesService.name);
   }
 
   async isExist(name: string) {

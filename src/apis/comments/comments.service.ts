@@ -1,7 +1,6 @@
 import { Post } from '@apis/posts/entities/post.entity';
 import { User } from '@apis/users/entities/user.entity';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
 import { Repository } from 'typeorm';
@@ -12,20 +11,16 @@ import { AccessControl } from '@libs/utils/access-control.util';
 import { QueryListDto } from '@libs/base/base.dto';
 import { responsePagination } from '@libs/utils/response-pagination.util';
 import { LikeType } from '@libs/enums';
+import { BaseService } from '@libs/base/base.service';
 
 @Injectable()
-export class CommentsService {
+export class CommentsService extends BaseService {
   constructor(
     @InjectRepository(Comment)
     private readonly commentsRepository: Repository<Comment>,
     private readonly postsService: PostsService,
-  ) {}
-
-  private readonly logger = new Logger(CommentsService.name);
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
+  ) {
+    super(CommentsService.name);
   }
 
   async findOne(id: number) {

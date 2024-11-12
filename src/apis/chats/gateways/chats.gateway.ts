@@ -1,7 +1,6 @@
 import { UsersService } from '@apis/users/users.service';
 import { RedisService } from '@libs/configs/redis/redis.service';
 import { Payload } from '@libs/interfaces';
-import { Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import {
@@ -17,8 +16,8 @@ import {
 import { Server, Socket } from 'socket.io';
 import { CreateMessageDto } from '../dto/create-message.dto';
 import { OfflineMessagesService } from '../services/offlineMessages.service';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
 import { MessagesService } from '../services/messages.service';
+import { BaseService } from '@libs/base/base.service';
 
 @WebSocketGateway(8000, {
   cors: {
@@ -26,10 +25,10 @@ import { MessagesService } from '../services/messages.service';
   },
 })
 export class ChatsGateway
+  extends BaseService
   implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer() server: Server;
-  private readonly logger = new Logger(ChatsGateway.name);
 
   constructor(
     private readonly messagesService: MessagesService,
@@ -38,11 +37,8 @@ export class ChatsGateway
     private readonly configService: ConfigService,
     private readonly redisService: RedisService,
     private readonly offlineMessagesService: OfflineMessagesService,
-  ) {}
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
+  ) {
+    super(ChatsGateway.name);
   }
 
   afterInit() {

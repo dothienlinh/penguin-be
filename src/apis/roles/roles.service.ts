@@ -1,7 +1,8 @@
+import { BaseService } from '@libs/base/base.service';
+import { Roles } from '@libs/enums';
 import {
   ConflictException,
   Injectable,
-  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -9,26 +10,19 @@ import { Repository } from 'typeorm';
 import { CreateRoleDto } from './dto/create-role.dto';
 import { UpdateRoleDto } from './dto/update-role.dto';
 import { Role } from './entities/role.entity';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
-import { Roles } from '@libs/enums';
 
 @Injectable()
-export class RolesService {
+export class RolesService extends BaseService {
   constructor(
     @InjectRepository(Role)
     private readonly roleRepository: Repository<Role>,
-  ) {}
-
-  private readonly logger = new Logger(RolesService.name);
+  ) {
+    super(RolesService.name);
+  }
 
   async isExist(name: Roles) {
     const role = await this.roleRepository.findOne({ where: { name } });
     return !!role;
-  }
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
   }
 
   async createMany(roles: CreateRoleDto[]) {

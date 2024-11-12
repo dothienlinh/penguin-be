@@ -1,23 +1,18 @@
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
-import { Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
 import { Repository } from 'typeorm';
 import { CreateMessageDto } from '../dto/create-message.dto';
 import { Message } from '../entities/message.entity';
+import { BaseService } from '@libs/base/base.service';
 
 @Injectable()
-export class MessagesService {
+export class MessagesService extends BaseService {
   constructor(
     @InjectRepository(Message)
     private readonly messagesRepository: Repository<Message>,
-  ) {}
-
-  private readonly logger = new Logger(MessagesService.name);
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
+  ) {
+    super(MessagesService.name);
   }
 
   async create(createMessageDto: CreateMessageDto) {

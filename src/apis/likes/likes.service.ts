@@ -1,29 +1,23 @@
-import { BadRequestException, Injectable, Logger } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Like } from './entities/like.entity';
-import { Repository, SelectQueryBuilder } from 'typeorm';
-import { User } from '@apis/users/entities/user.entity';
-import { LikeType } from '@libs/enums';
 import { Comment } from '@apis/comments/entities/comment.entity';
 import { Post } from '@apis/posts/entities/post.entity';
-import { ErrorHandler } from '@libs/utils/error-handler.utils';
-import { CreateLikeDto } from './dto/create-like.dto';
-import { plainToInstance } from 'class-transformer';
-import { ListUserLikedPostDto } from './dto/list-user-liked-post.dto';
+import { User } from '@apis/users/entities/user.entity';
+import { BaseService } from '@libs/base/base.service';
+import { LikeType } from '@libs/enums';
 import { AccessControl } from '@libs/utils/access-control.util';
-
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { plainToInstance } from 'class-transformer';
+import { Repository, SelectQueryBuilder } from 'typeorm';
+import { CreateLikeDto } from './dto/create-like.dto';
+import { ListUserLikedPostDto } from './dto/list-user-liked-post.dto';
+import { Like } from './entities/like.entity';
 @Injectable()
-export class LikesService {
+export class LikesService extends BaseService {
   constructor(
     @InjectRepository(Like)
     private readonly likesRepository: Repository<Like>,
-  ) {}
-
-  private readonly logger = new Logger(LikesService.name);
-
-  private handleError(error: any, message: string): never {
-    this.logger.error(`${message}: ${error.message}`);
-    return ErrorHandler.handle(error, message);
+  ) {
+    super(LikesService.name);
   }
 
   private async getPaginatedPosts(
