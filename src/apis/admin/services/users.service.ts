@@ -1,6 +1,6 @@
 import { User } from '@apis/users/entities/user.entity';
 import { BaseService } from '@libs/base/base.service';
-import { Roles, SortBy, UserStatusQuery } from '@libs/enums';
+import { ByRole, Roles, SortBy, UserStatusQuery } from '@libs/enums';
 import {
   ForbiddenException,
   Injectable,
@@ -8,8 +8,16 @@ import {
 } from '@nestjs/common';
 import { InjectEntityManager } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
-import { EntityManager } from 'typeorm';
-import { DeleteUserDto, GetAdminUserListDto } from '../dto/admin-user.dto';
+import { EntityManager, In, IsNull, Not } from 'typeorm';
+import {
+  DeleteUserDto,
+  GetAdminUserListDto,
+  UpdatePermissionDto,
+  UpdateUserRoleDto,
+} from '../dto/admin-user.dto';
+import { Role } from '@apis/roles/entities/role.entity';
+import { Permission } from '@apis/permissions/entities/permission.entity';
+import { DEFAULT_PERMISSIONS_USER } from '@libs/constants';
 
 @Injectable()
 export class UsersService extends BaseService {
@@ -35,7 +43,11 @@ export class UsersService extends BaseService {
     'user.username',
   ];
 
-  private async getUserWithAllRelations(id: number, user: User) {
+  private async getUserWithAllRelations(
+    id: number,
+    user: User,
+    withDeleted?: boolean,
+  ) {
     const userToDelete = await this.entityManager.findOne(User, {
       where: { id },
       relations: {
@@ -43,7 +55,9 @@ export class UsersService extends BaseService {
         comments: true,
         likes: true,
         saves: true,
+        role: true,
       },
+      withDeleted,
     });
 
     if (!userToDelete) {
@@ -64,9 +78,44 @@ export class UsersService extends BaseService {
     return userToDelete;
   }
 
+  private async getUserDetail(by: 'username' | 'id', value: string | number) {
+    const queryBuilder = this.entityManager
+      .createQueryBuilder(User, 'user')
+      .withDeleted()
+      .where(`user.${by} = :${by}`, { [by]: value })
+      .select([...this.selectUserProfile, 'user.deletedAt'])
+      .leftJoin('user.role', 'role')
+      .addSelect(['role.id', 'role.name'])
+      .leftJoin('user.permissions', 'permissions')
+      .addSelect(['permissions.id', 'permissions.name'])
+      .loadRelationCountAndMap('posts.postCount', 'user.posts', 'posts', (qb) =>
+        qb.withDeleted(),
+      )
+      .loadRelationCountAndMap(
+        'user.followerCount',
+        'user.followers',
+        'users',
+        (qb) => qb.withDeleted(),
+      )
+      .loadRelationCountAndMap(
+        'user.followingCount',
+        'user.following',
+        'users',
+        (qb) => qb.withDeleted(),
+      );
+
+    const user = await queryBuilder.getOne();
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    return { ...plainToInstance(User, user), isDeleted: !!user.deletedAt };
+  }
+
   async getUsers(query: GetAdminUserListDto) {
     try {
-      const { page, size, role, sortBy, status, username } = query;
+      const { page, size, role, sortBy, status, deletedBy, searchTerm } = query;
 
       const mapSortBy: Record<SortBy, string> = {
         [SortBy.NEWEST]: 'user.createdAt',
@@ -84,40 +133,45 @@ export class UsersService extends BaseService {
 
       const queryBuilder = this.entityManager
         .createQueryBuilder(User, 'user')
-        .where('user.username ILIKE :username', {
-          username: `%${username || ''}%`,
-        })
         .select(this.selectUserProfile)
         .leftJoin('user.role', 'role')
         .addSelect(['role.id', 'role.name'])
-        .andWhere('role.name = :role', { role });
+        .where('role.name = :role', { role });
 
-      if (status) {
+      if (status === undefined) {
+        queryBuilder.withDeleted();
+      } else {
         switch (status) {
-          case UserStatusQuery.ALL:
-            queryBuilder.withDeleted();
-            break;
           case UserStatusQuery.ACTIVE:
             queryBuilder.andWhere('user.isActive = :isActive', {
               isActive: true,
             });
             break;
-          case UserStatusQuery.BLOCKED:
-            queryBuilder.andWhere('user.isBlocked = :isBlocked', {
-              isBlocked: true,
-            });
+          case UserStatusQuery.DELETED:
+            queryBuilder.withDeleted();
+
+            if (deletedBy === ByRole.USER) {
+              queryBuilder
+                .andWhere('user.deleted_at IS NOT NULL')
+                .andWhere('user.deleted_by_admin_id IS NULL');
+            } else if (deletedBy === ByRole.ADMIN) {
+              queryBuilder.andWhere('user.deleted_by_admin_id IS NOT NULL');
+            } else {
+              queryBuilder.andWhere(
+                '(user.deleted_at IS NOT NULL OR user.deleted_by_admin_id IS NOT NULL)',
+              );
+            }
             break;
-          case UserStatusQuery.DELETED_BY_ADMIN:
-            queryBuilder.andWhere('user.removed_by_admin_id IS NOT NULL');
-            break;
-          case UserStatusQuery.DELETED_BY_USER:
-            queryBuilder
-              .andWhere(
-                'user.deleted_at IS NOT NULL AND user.removed_by_admin_id IS NULL',
-              )
-              .withDeleted();
+          default:
             break;
         }
+      }
+
+      if (searchTerm) {
+        queryBuilder.andWhere(
+          'user.username ILIKE :searchTerm OR user.email ILIKE :searchTerm',
+          { searchTerm: `%${searchTerm}%` },
+        );
       }
 
       queryBuilder.orderBy(
@@ -131,28 +185,19 @@ export class UsersService extends BaseService {
     }
   }
 
-  async getUserDetail(id: number) {
+  async getUserById(id: number) {
     try {
-      const queryBuilder = this.entityManager
-        .createQueryBuilder(User, 'user')
-        .withDeleted()
-        .where('user.id = :id', { id })
-        .select(this.selectUserProfile)
-        .leftJoin('user.role', 'role')
-        .addSelect(['role.id', 'role.name'])
-        .loadRelationCountAndMap('posts.postCount', 'user.posts')
-        .loadRelationCountAndMap(
-          'posts.postCountDeleted',
-          'user.posts',
-          'posts',
-          (qb) => qb.withDeleted(),
-        )
-        .loadRelationCountAndMap('user.followerCount', 'user.followers')
-        .loadRelationCountAndMap('user.followingCount', 'user.following');
-
-      return plainToInstance(User, await queryBuilder.getOne());
+      return await this.getUserDetail('id', id);
     } catch (error) {
-      this.handleError(error, 'Admin get user detail failed');
+      this.handleError(error, 'Admin get user by id failed');
+    }
+  }
+
+  async getUserByUsername(username: string) {
+    try {
+      return await this.getUserDetail('username', username);
+    } catch (error) {
+      this.handleError(error, 'Admin get user by username failed');
     }
   }
 
@@ -180,10 +225,31 @@ export class UsersService extends BaseService {
 
   async restoreUser(id: number, user: User) {
     try {
-      const userToRestore = await this.getUserWithAllRelations(id, user);
+      const userToRestore = await this.entityManager.findOne(User, {
+        where: { id, deletedAt: Not(IsNull()) },
+        relations: {
+          role: true,
+        },
+        withDeleted: true,
+      });
+
+      if (!userToRestore) {
+        throw new NotFoundException('User not found');
+      }
+
+      if (userToRestore.role.name === Roles.SUPER_ADMIN) {
+        throw new ForbiddenException('Cannot restore super admin');
+      }
+
+      if (
+        userToRestore.role.name === Roles.ADMIN &&
+        user.role.name === Roles.ADMIN
+      ) {
+        throw new ForbiddenException('Cannot restore admin');
+      }
 
       await Promise.all([
-        this.entityManager.restore(User, userToRestore),
+        this.entityManager.restore(User, { id: userToRestore.id }),
         this.entityManager.update(
           User,
           { id: userToRestore.id },
@@ -197,6 +263,81 @@ export class UsersService extends BaseService {
       return true;
     } catch (error) {
       this.handleError(error, 'Admin restore user failed');
+    }
+  }
+
+  async updateUserRole(id: number, updateUserRoleDto: UpdateUserRoleDto) {
+    try {
+      const user = await this.entityManager.findOne(User, {
+        where: { id },
+        relations: {
+          permissions: true,
+        },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const role = await this.entityManager.findOne(Role, {
+        where: {
+          name: updateUserRoleDto.role as unknown as Roles,
+        },
+      });
+
+      if (!role) {
+        throw new NotFoundException('Role not found');
+      }
+
+      const permissionNames =
+        role.name === Roles.ADMIN ? [] : DEFAULT_PERMISSIONS_USER;
+
+      const permissions = await this.entityManager.find(Permission, {
+        where: {
+          name: In(permissionNames),
+        },
+      });
+
+      user.role = role;
+      user.permissions = permissions;
+
+      await this.entityManager.save(User, user);
+
+      return true;
+    } catch (error) {
+      this.handleError(error, 'Admin update user role failed');
+    }
+  }
+
+  async updateUserPermission(
+    id: number,
+    updatePermissionDto: UpdatePermissionDto,
+  ) {
+    try {
+      const user = await this.entityManager.findOne(User, {
+        where: { id },
+        relations: {
+          permissions: true,
+        },
+      });
+
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
+      const permissions = await this.entityManager.find(Permission, {
+        where: {
+          id: In(updatePermissionDto.permissionsIds),
+        },
+      });
+
+      user.permissions = permissions;
+
+      await this.entityManager.save(User, user);
+
+      return true;
+    } catch (error) {
+      this.handleError(error, 'Admin update user permission failed');
     }
   }
 }

@@ -56,6 +56,7 @@ export enum Permission {
   ADMIN_GET_USER_DETAIL = 'admin_get_user_detail',
   ADMIN_DELETE_USER = 'admin_delete_user',
   ADMIN_RESTORE_USER = 'admin_restore_user',
+  ADMIN_UPDATE_USER_PERMISSION = 'admin_update_user_permission',
 
   // ADMIN POST
   ADMIN_DELETE_POST = 'admin_delete_post',
@@ -72,7 +73,7 @@ export enum Permission {
   USER_HAS_PERMISSION = 'user_has_permission',
 
   // POST
-  WRITE_POST = 'write_post',
+  CREATE_POST = 'create_post',
   DELETE_POST = 'delete_post',
   UPDATE_POST = 'update_post',
   UPDATE_STATUS_POST = 'update_status_post',
@@ -82,36 +83,6 @@ export enum Permission {
 
   // COMMENT
   CREATE_COMMENT = 'create_comment',
-
-  // ROLE
-  READ_ROLE = 'read_role',
-  WRITE_ROLE = 'write_role',
-  DELETE_ROLE = 'delete_role',
-  UPDATE_ROLE = 'update_role',
-
-  // CHAT
-  READ_CHAT = 'read_chat',
-  WRITE_CHAT = 'write_chat',
-  DELETE_CHAT = 'delete_chat',
-  UPDATE_CHAT = 'update_chat',
-
-  // IMAGE
-  READ_IMAGE = 'read_image',
-  WRITE_IMAGE = 'write_image',
-  DELETE_IMAGE = 'delete_image',
-  UPDATE_IMAGE = 'update_image',
-
-  // PERMISSION
-  READ_PERMISSION = 'read_permission',
-  WRITE_PERMISSION = 'write_permission',
-  DELETE_PERMISSION = 'delete_permission',
-  UPDATE_PERMISSION = 'update_permission',
-
-  // CATEGORY
-  READ_CATEGORY = 'read_category',
-  WRITE_CATEGORY = 'write_category',
-  DELETE_CATEGORY = 'delete_category',
-  UPDATE_CATEGORY = 'update_category',
 }
 
 export enum SortBy {
@@ -122,11 +93,9 @@ export enum SortBy {
 }
 
 export enum UserStatusQuery {
-  ALL = 'all',
+  ALL = '',
   ACTIVE = 'active',
-  BLOCKED = 'blocked',
-  DELETED_BY_ADMIN = 'deletedByAdmin',
-  DELETED_BY_USER = 'deletedByUser',
+  DELETED = 'deleted',
 }
 
 export enum ByRole {

@@ -1,14 +1,9 @@
 import { BaseService } from '@libs/base/base.service';
 import { Roles } from '@libs/enums';
-import {
-  ConflictException,
-  Injectable,
-  NotFoundException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateRoleDto } from './dto/create-role.dto';
-import { UpdateRoleDto } from './dto/update-role.dto';
 import { Role } from './entities/role.entity';
 
 @Injectable()
@@ -18,11 +13,6 @@ export class RolesService extends BaseService {
     private readonly roleRepository: Repository<Role>,
   ) {
     super(RolesService.name);
-  }
-
-  async isExist(name: Roles) {
-    const role = await this.roleRepository.findOne({ where: { name } });
-    return !!role;
   }
 
   async createMany(roles: CreateRoleDto[]) {
@@ -57,36 +47,11 @@ export class RolesService extends BaseService {
     }
   }
 
-  async create(createRoleDto: CreateRoleDto) {
-    try {
-      const role = await this.isExist(createRoleDto.name);
-      if (role) {
-        throw new ConflictException('Role already exists');
-      }
-      const newRole = this.roleRepository.create(createRoleDto);
-      return await this.roleRepository.save(newRole);
-    } catch (error) {
-      this.handleError(error, 'Error creating role');
-    }
-  }
-
   async findAll() {
     try {
       return await this.roleRepository.find();
     } catch (error) {
       this.handleError(error, 'Error finding all roles');
-    }
-  }
-
-  async findOne(id: number) {
-    try {
-      const role = await this.roleRepository.findOne({ where: { id } });
-      if (!role) {
-        throw new NotFoundException('Role not found');
-      }
-      return role;
-    } catch (error) {
-      this.handleError(error, 'Error finding role');
     }
   }
 
@@ -99,30 +64,6 @@ export class RolesService extends BaseService {
       return role;
     } catch (error) {
       this.handleError(error, 'Error finding role');
-    }
-  }
-
-  async update(id: number, updateRoleDto: UpdateRoleDto) {
-    try {
-      const role = await this.roleRepository.findOne({ where: { id } });
-      if (!role) {
-        throw new NotFoundException('Role not found');
-      }
-      return await this.roleRepository.save(updateRoleDto);
-    } catch (error) {
-      this.handleError(error, 'Error updating role');
-    }
-  }
-
-  async remove(id: number) {
-    try {
-      const role = await this.roleRepository.findOne({ where: { id } });
-      if (!role) {
-        throw new NotFoundException('Role not found');
-      }
-      return await this.roleRepository.delete({ id });
-    } catch (error) {
-      this.handleError(error, 'Error removing role');
     }
   }
 }

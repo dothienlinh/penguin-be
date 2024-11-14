@@ -168,6 +168,8 @@ export class UsersService extends BaseService {
         .leftJoinAndSelect('user.followers', 'followers')
         .select([...this.selectUserProfile, 'followers.id'])
         .where('user.username = :username', { username })
+        .leftJoin('user.role', 'role')
+        .addSelect(['role.id', 'role.name'])
         .getOne();
 
       if (!user) throw new NotFoundException('User not found');
