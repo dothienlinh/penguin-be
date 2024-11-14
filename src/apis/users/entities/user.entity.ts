@@ -43,16 +43,13 @@ export class User extends BaseEntity {
   @Column({ default: false, name: 'is_active' })
   isActive: boolean;
 
-  @Column({ type: 'boolean', default: false, name: 'is_blocked' })
-  isBlocked: boolean;
-
   @Column({ type: 'boolean', default: false, name: 'is_verified' })
   isVerified: boolean;
 
   @Column({ type: 'boolean', default: false, name: 'is_published' })
   isPublished: boolean;
 
-  @Column({ type: 'enum', enum: Provider, default: Provider.EMAIL })
+  @Column({ type: 'varchar', default: Provider.EMAIL, length: 20 })
   provider: Provider;
 
   @Column({

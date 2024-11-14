@@ -5,12 +5,19 @@ import {
   ApiPropertyOptional,
   IntersectionType,
 } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import {
+  IsArray,
+  IsEnum,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from 'class-validator';
 
 export class GetAdminUserDto {
   @ApiPropertyOptional({
     enum: UserStatusQuery,
-    example: UserStatusQuery.DELETED_BY_ADMIN,
+    example: UserStatusQuery.DELETED,
   })
   @IsOptional()
   @IsEnum(UserStatusQuery)
@@ -25,19 +32,28 @@ export class GetAdminUserDto {
   sortBy?: SortBy;
 
   @ApiPropertyOptional({
-    example: 'username',
-  })
-  @IsOptional()
-  @IsString()
-  username?: string;
-
-  @ApiPropertyOptional({
     enum: ByRole,
     example: ByRole.USER,
   })
   @IsOptional()
   @IsEnum(ByRole)
   role?: ByRole;
+
+  @ApiPropertyOptional({
+    enum: ByRole,
+    example: ByRole.ADMIN,
+  })
+  @IsOptional()
+  @IsEnum(ByRole)
+  deletedBy?: ByRole;
+
+  @ApiPropertyOptional({
+    example: 'username',
+    description: 'Search username or email',
+  })
+  @IsOptional()
+  @IsString()
+  searchTerm?: string;
 }
 
 export class GetAdminUserListDto extends IntersectionType(
@@ -53,4 +69,24 @@ export class DeleteUserDto {
   @IsNotEmpty()
   @IsString()
   deletedReason: string;
+}
+
+export class UpdateUserRoleDto {
+  @ApiPropertyOptional({
+    enum: ByRole,
+    example: ByRole.USER,
+  })
+  @IsNotEmpty()
+  @IsEnum(ByRole)
+  role: ByRole;
+}
+
+export class UpdatePermissionDto {
+  @ApiProperty({
+    example: [],
+  })
+  @IsNotEmpty()
+  @IsArray()
+  @IsNumber({}, { each: true })
+  permissionsIds: number[];
 }

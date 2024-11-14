@@ -1,13 +1,7 @@
 import { QueryListDto } from '@libs/base/base.dto';
 import { ByRole, PostStatus } from '@libs/enums';
 import { ApiProperty, IntersectionType } from '@nestjs/swagger';
-import {
-  IsEnum,
-  IsNotEmpty,
-  IsOptional,
-  IsString,
-  ValidateIf,
-} from 'class-validator';
+import { IsEnum, IsNotEmpty, IsOptional, IsString } from 'class-validator';
 
 export class GetAdminPostDto {
   @ApiProperty({
@@ -24,11 +18,17 @@ export class GetAdminPostDto {
     example: ByRole.ADMIN,
     description: 'Deleted by',
   })
-  @ValidateIf((dto: GetAdminPostDto) => dto.status === PostStatus.DELETED)
-  @IsEnum(ByRole, {
-    message: 'deletedBy must be either ADMIN or USER when status is DELETED',
-  })
+  @IsEnum(ByRole)
+  @IsOptional()
   deletedBy?: ByRole;
+
+  @ApiProperty({
+    example: 'Title',
+    description: 'Title of the post',
+  })
+  @IsOptional()
+  @IsString()
+  title?: string;
 }
 
 export class GetAdminPostListDto extends IntersectionType(

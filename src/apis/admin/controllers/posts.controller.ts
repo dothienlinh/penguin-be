@@ -13,11 +13,7 @@ import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { PostsService } from '../services/posts.service';
 import { ResponseMessage } from '@libs/decorators/responseMessage.decorator';
 import { Permissions } from '@libs/decorators/permissions.decorator';
-import {
-  DeletePostDto,
-  GetAdminPostDto,
-  GetAdminPostListDto,
-} from '../dto/admin-post.dto';
+import { DeletePostDto, GetAdminPostListDto } from '../dto/admin-post.dto';
 import { CurrentUser } from '@libs/decorators/user.decorator';
 import { User } from '@apis/users/entities/user.entity';
 
@@ -39,8 +35,8 @@ export class PostsController {
   @ApiOperation({ summary: 'Admin get post detail' })
   @ResponseMessage('Admin get post detail successfully')
   @Get(':id')
-  async getPostsById(@Param('id') id: number, @Query() query: GetAdminPostDto) {
-    return await this.postsService.getPostsById(+id, query);
+  async getPostsById(@Param('id') id: number) {
+    return await this.postsService.getPostsById(+id);
   }
 
   @Permissions(Permission.ADMIN_GET_POSTS_OF_USER)

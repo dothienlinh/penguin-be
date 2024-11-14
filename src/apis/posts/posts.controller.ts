@@ -1,4 +1,5 @@
 import { User } from '@apis/users/entities/user.entity';
+import { QueryListDto } from '@libs/base/base.dto';
 import { Permissions } from '@libs/decorators/permissions.decorator';
 import { ResponseMessage } from '@libs/decorators/responseMessage.decorator';
 import { CurrentUser } from '@libs/decorators/user.decorator';
@@ -17,24 +18,24 @@ import {
   UseInterceptors,
   ValidationPipe,
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiBody, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Express } from 'express';
 import { CreatePostDto } from './dto/create-post.dto';
+import { DeletePostImagesDto } from './dto/dalete-post-images.dto';
+import { GetPostDto } from './dto/get-post.dto';
 import { ListPostDeleteDto, ListPostDto } from './dto/list-post.dto';
 import { SearchPostDto } from './dto/search-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { UploadImagePostDto } from './dto/upload-image-post.dto';
 import { PostsService } from './posts.service';
-import { GetPostDto } from './dto/get-post.dto';
-import { DeletePostImagesDto } from './dto/dalete-post-images.dto';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { QueryListDto } from '@libs/base/base.dto';
 
 @ApiTags('Posts')
 @Controller('posts')
 export class PostsController {
   constructor(private readonly postsService: PostsService) {}
 
+  @Permissions(Permission.CREATE_POST)
   @Post()
   @ApiOperation({ summary: 'Create post' })
   async create(

@@ -28,7 +28,7 @@ export class Post extends BaseEntity {
   @Column({ name: 'is_published', type: 'boolean', default: false })
   isPublished: boolean;
 
-  @Column({ type: 'enum', enum: PostStatus, default: PostStatus.PENDING })
+  @Column({ type: 'varchar', length: 20, default: PostStatus.PENDING })
   status: PostStatus;
 
   @Column({ type: 'boolean', default: true, name: 'is_draft' })

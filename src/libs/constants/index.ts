@@ -56,21 +56,12 @@ export const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB default
 
 export const PERMISSIONS_KEY = 'permissions';
 
-export const PERMISSIONS_ADMIN_ONLY = [
+export const DEFAULT_PERMISSIONS_ADMIN = [
   Permission.READ_USER,
   Permission.WRITE_USER,
   Permission.DELETE_USER,
-  Permission.WRITE_POST,
+  Permission.CREATE_POST,
   Permission.DELETE_POST,
-  Permission.READ_ROLE,
-  Permission.WRITE_ROLE,
-  Permission.DELETE_ROLE,
-  Permission.READ_CHAT,
-  Permission.WRITE_CHAT,
-  Permission.DELETE_CHAT,
-  Permission.READ_IMAGE,
-  Permission.WRITE_IMAGE,
-  Permission.DELETE_IMAGE,
   Permission.UPDATE_STATUS_POST,
   Permission.READ_PENDING_POST,
 
@@ -89,15 +80,13 @@ export const PERMISSIONS_ADMIN_ONLY = [
   Permission.PERMANENTLY_DELETE_POST,
 ];
 
-export const PERMISSIONS_USER_ONLY = [
+export const DEFAULT_PERMISSIONS_USER = [
   Permission.READ_USER,
   Permission.WRITE_USER,
   Permission.DELETE_USER,
-  Permission.READ_CHAT,
-  Permission.READ_IMAGE,
   Permission.UPDATE_TO_DRAFT,
   Permission.UPDATE_POST,
-  Permission.PERMANENTLY_DELETE_POST,
+  Permission.CREATE_POST,
   Permission.CREATE_COMMENT,
 ];
 

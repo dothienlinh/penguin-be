@@ -5,20 +5,26 @@ import {
   Get,
   Param,
   Post,
+  Put,
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { Roles } from '@libs/decorators/roles.decorator';
 import { Permission, Roles as Role } from '@libs/enums';
 import { UsersService } from '../services/users.service';
-import { DeleteUserDto, GetAdminUserListDto } from '../dto/admin-user.dto';
+import {
+  DeleteUserDto,
+  GetAdminUserListDto,
+  UpdatePermissionDto,
+  UpdateUserRoleDto,
+} from '../dto/admin-user.dto';
 import { ResponseMessage } from '@libs/decorators/responseMessage.decorator';
 import { Permissions } from '@libs/decorators/permissions.decorator';
 import { User } from '@apis/users/entities/user.entity';
 import { CurrentUser } from '@libs/decorators/user.decorator';
 
-@Roles(Role.ADMIN, Role.SUPER_ADMIN)
 @ApiTags('Admin Users')
+@Roles(Role.ADMIN, Role.SUPER_ADMIN)
 @Controller('admin/users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
@@ -38,7 +44,16 @@ export class UsersController {
   @ResponseMessage('Admin get user detail successfully')
   @Get(':id')
   getUserDetail(@Param('id') id: number) {
-    return this.usersService.getUserDetail(+id);
+    return this.usersService.getUserById(+id);
+  }
+
+  @Permissions(Permission.ADMIN_GET_USER_DETAIL)
+  @ApiOperation({ summary: 'Admin get user by username' })
+  @ResponseMessage('Admin get user by username successfully')
+  @ResponseMessage('Admin get user by username successfully')
+  @Get('username/:username')
+  getUserByUsername(@Param('username') username: string) {
+    return this.usersService.getUserByUsername(username);
   }
 
   @Permissions(Permission.ADMIN_DELETE_USER)
@@ -61,5 +76,29 @@ export class UsersController {
   @Post(':id/restore')
   restoreUser(@Param('id') id: number, @CurrentUser() user: User) {
     return this.usersService.restoreUser(+id, user);
+  }
+
+  @Roles(Role.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Admin update user role' })
+  @ResponseMessage('Admin update user role successfully')
+  @ResponseMessage('Admin update user role successfully')
+  @Put(':id/role')
+  updateUserRole(
+    @Param('id') id: number,
+    @Body() updateUserRoleDto: UpdateUserRoleDto,
+  ) {
+    return this.usersService.updateUserRole(+id, updateUserRoleDto);
+  }
+
+  @Permissions(Permission.ADMIN_UPDATE_USER_PERMISSION)
+  @ApiOperation({ summary: 'Admin update permission for user' })
+  @ResponseMessage('Admin update permission for user successfully')
+  @ResponseMessage('Admin update permission for user successfully')
+  @Put(':id/permission')
+  updatePermission(
+    @Param('id') id: number,
+    @Body() updatePermissionDto: UpdatePermissionDto,
+  ) {
+    return this.usersService.updateUserPermission(+id, updatePermissionDto);
   }
 }

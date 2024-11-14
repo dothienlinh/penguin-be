@@ -1,4 +1,4 @@
-import { Permission as PermissionEnum } from '@libs/enums';
+import { ByRole, Permission as PermissionEnum, Roles } from '@libs/enums';
 import {
   ConflictException,
   Injectable,
@@ -9,9 +9,13 @@ import { In, Repository } from 'typeorm';
 import { CreatePermissionDto } from './dto/create-permission.dto';
 import { UpdatePermissionDto } from './dto/update-permission.dto';
 import { Permission } from './entities/permission.entity';
-import { PERMISSIONS_USER_ONLY } from '@libs/constants';
+import {
+  DEFAULT_PERMISSIONS_ADMIN,
+  DEFAULT_PERMISSIONS_USER,
+} from '@libs/constants';
 import { plainToInstance } from 'class-transformer';
 import { BaseService } from '@libs/base/base.service';
+import { Role } from '@apis/roles/entities/role.entity';
 
 @Injectable()
 export class PermissionsService extends BaseService {
@@ -34,32 +38,64 @@ export class PermissionsService extends BaseService {
       .createQueryBuilder()
       .insert()
       .values(permissions)
+      .returning('*')
       .execute();
   }
 
   async createPermissions() {
     try {
-      const permissions = Object.values(PermissionEnum).map((permission) => ({
-        name: permission,
-      }));
+      await this.permissionRepository.manager.transaction(async (manager) => {
+        const [adminRole, userRole] = await Promise.all([
+          manager.findOne(Role, {
+            where: { name: Roles.ADMIN },
+            relations: ['permissions'],
+          }),
+          manager.findOne(Role, {
+            where: { name: Roles.USER },
+            relations: ['permissions'],
+          }),
+        ]);
 
-      const isExistPermissions = await this.findAll();
+        if (!adminRole || !userRole) {
+          throw new Error('Roles not found');
+        }
 
-      if (!isExistPermissions.length) {
-        return await this.createMany(permissions);
-      }
+        const adminPermissions = await Promise.all(
+          DEFAULT_PERMISSIONS_ADMIN.map(async (name) => {
+            let permission = await manager.findOne(Permission, {
+              where: { name },
+            });
+            if (!permission) {
+              permission = manager.create(Permission, { name });
+              permission = await manager.save(Permission, permission);
+            }
+            return permission;
+          }),
+        );
 
-      const namePermissions = isExistPermissions.map(
-        (permission) => permission.name,
-      );
+        const userPermissions = await Promise.all(
+          DEFAULT_PERMISSIONS_USER.map(async (name) => {
+            let permission = await manager.findOne(Permission, {
+              where: { name },
+            });
+            if (!permission) {
+              permission = manager.create(Permission, { name });
+              permission = await manager.save(Permission, permission);
+            }
+            return permission;
+          }),
+        );
 
-      const createPermissions = permissions.filter(
-        (permission) => !namePermissions.includes(permission.name),
-      );
+        adminRole.permissions = adminPermissions;
+        userRole.permissions = userPermissions;
 
-      if (createPermissions.length) {
-        return await this.createMany(createPermissions);
-      }
+        await Promise.all([
+          manager.save(Role, adminRole),
+          manager.save(Role, userRole),
+        ]);
+      });
+
+      return true;
     } catch (error) {
       this.handleError(error, 'Error creating permissions');
     }
@@ -80,7 +116,7 @@ export class PermissionsService extends BaseService {
   }
 
   async getDefaultPermissionsUser() {
-    const defaultPermissionNames = [...PERMISSIONS_USER_ONLY];
+    const defaultPermissionNames = [...DEFAULT_PERMISSIONS_USER];
     const permissions = await this.permissionRepository.findBy({
       name: In(defaultPermissionNames),
     });
@@ -90,7 +126,9 @@ export class PermissionsService extends BaseService {
 
   async findAll() {
     try {
-      return await this.permissionRepository.find();
+      return await this.permissionRepository.find({
+        select: { id: true, name: true },
+      });
     } catch (error) {
       this.handleError(error, 'Error finding all permissions');
     }
@@ -100,6 +138,7 @@ export class PermissionsService extends BaseService {
     try {
       const permission = await this.permissionRepository.findOne({
         where: { id },
+        select: { id: true, name: true },
       });
       if (!permission) {
         throw new NotFoundException('Permission not found');
@@ -107,6 +146,19 @@ export class PermissionsService extends BaseService {
       return permission;
     } catch (error) {
       this.handleError(error, 'Error finding permission');
+    }
+  }
+
+  async getPermissionsByRole(role: ByRole) {
+    try {
+      const permissions = await this.permissionRepository.find({
+        where: { roles: { name: role as unknown as Roles } },
+        select: { id: true, name: true },
+      });
+
+      return permissions;
+    } catch (error) {
+      this.handleError(error, 'Error getting permissions by role');
     }
   }
 

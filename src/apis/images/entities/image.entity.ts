@@ -8,7 +8,7 @@ export class Image extends BaseEntity {
   @Column({ type: 'varchar', length: 255 })
   url: string;
 
-  @Column({ type: 'enum', enum: ImageType, default: ImageType.THUMBNAIL })
+  @Column({ type: 'varchar', length: 20, default: ImageType.THUMBNAIL })
   type: ImageType;
 
   @ManyToOne(() => Post, (post) => post.images, { onDelete: 'CASCADE' })

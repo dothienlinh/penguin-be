@@ -13,7 +13,7 @@ export class Like extends BaseEntity {
   @Column({ name: 'comment_id', nullable: true })
   commentId: number;
 
-  @Column({ name: 'target_type', type: 'enum', enum: LikeType })
+  @Column({ name: 'target_type', type: 'varchar', length: 20 })
   targetType: LikeType;
 
   @ManyToOne(() => User, (user) => user.likes, {
