@@ -46,9 +46,6 @@ export class User extends BaseEntity {
   @Column({ type: 'boolean', default: false, name: 'is_verified' })
   isVerified: boolean;
 
-  @Column({ type: 'boolean', default: false, name: 'is_published' })
-  isPublished: boolean;
-
   @Column({ type: 'varchar', default: Provider.EMAIL, length: 20 })
   provider: Provider;
 

@@ -71,7 +71,8 @@ export class PostsService extends BaseService {
 
       const queryBuilder = this.entityManager
         .createQueryBuilder(Post, 'post')
-        .where('post.title ILIKE :title', { title: `%${title || ''}%` });
+        .where('post.title ILIKE :title', { title: `%${title || ''}%` })
+        .andWhere('post.is_draft = :isDraft', { isDraft: false });
 
       if (status === undefined) {
         queryBuilder.withDeleted();
@@ -170,7 +171,8 @@ export class PostsService extends BaseService {
         .withDeleted()
         .distinct(true)
         .where('post.user_id = :id', { id })
-        .andWhere('post.title ILIKE :title', { title: `%${title || ''}%` });
+        .andWhere('post.title ILIKE :title', { title: `%${title || ''}%` })
+        .andWhere('post.is_draft = :isDraft', { isDraft: false });
 
       if (status !== undefined) {
         if (status !== PostStatus.DELETED) {

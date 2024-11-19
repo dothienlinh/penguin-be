@@ -6,6 +6,7 @@ import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
+import { SocketIoAdapter } from '@libs/adapters/SocketIoAdapter';
 
 async function bootstrap() {
   try {
@@ -49,6 +50,8 @@ async function bootstrap() {
       origin: configService.getOrThrow<string>('FRONTEND_URL'),
       credentials: true,
     });
+
+    app.useWebSocketAdapter(new SocketIoAdapter(app));
 
     await app.listen(port);
   } catch (error) {

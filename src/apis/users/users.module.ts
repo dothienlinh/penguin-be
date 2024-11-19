@@ -8,6 +8,9 @@ import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { createMulterOptions } from '@libs/configs/multer/multer-options.factory';
 import { IMAGE_TYPES } from '@libs/constants';
+import { JwtModule } from '@nestjs/jwt';
+import { RedisModule } from '@libs/configs/redis/redis.module';
+import { PresenceGateway } from './gateways/presence.gateway';
 
 @Module({
   imports: [
@@ -21,9 +24,11 @@ import { IMAGE_TYPES } from '@libs/constants';
     }),
     RolesModule,
     PermissionsModule,
+    JwtModule,
+    RedisModule,
   ],
   controllers: [UsersController],
-  providers: [UsersService],
+  providers: [UsersService, PresenceGateway],
   exports: [UsersService],
 })
 export class UsersModule {}

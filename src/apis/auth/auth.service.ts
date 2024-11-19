@@ -35,6 +35,11 @@ export class AuthService extends BaseService {
         key: 'email',
         value: email,
       });
+
+      if (!user) {
+        throw new BadRequestException('Email or password is incorrect');
+      }
+
       const isMatch = await comparePassword(password, user.password);
       return isMatch ? plainToInstance(User, user) : null;
     } catch (error) {
@@ -67,21 +72,25 @@ export class AuthService extends BaseService {
 
   async googleLoginCallback(user: User, res: Response) {
     const frontendUrl = this.configService.getOrThrow<string>('FRONTEND_URL');
-    const nodeEnv = this.configService.getOrThrow<string>('NODE_ENV');
+    // const nodeEnv = this.configService.getOrThrow<string>('NODE_ENV');
 
     if (!user) {
       return res.redirect(frontendUrl);
     }
 
     try {
-      const { accessToken } = await this.login(user, res, true);
+      // const { accessToken } =
+      await this.login(user, res, true);
 
-      if (nodeEnv !== 'development') {
-        const pathname = user?.role?.name === Roles.USER ? '/' : '/admin';
-        res.redirect(`${frontendUrl}${pathname}`);
-      } else {
-        return { accessToken };
-      }
+      const pathname = user?.role?.name === Roles.USER ? '/' : '/admin';
+      res.redirect(`${frontendUrl}${pathname}`);
+
+      // if (nodeEnv !== 'development') {
+      //   const pathname = user?.role?.name === Roles.USER ? '/' : '/admin';
+      //   res.redirect(`${frontendUrl}${pathname}`);
+      // } else {
+      //   return { accessToken };
+      // }
     } catch (error) {
       this.handleError(error, 'Login callback failed');
     }
