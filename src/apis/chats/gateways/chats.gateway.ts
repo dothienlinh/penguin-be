@@ -19,10 +19,8 @@ import { OfflineMessagesService } from '../services/offlineMessages.service';
 import { MessagesService } from '../services/messages.service';
 import { BaseService } from '@libs/base/base.service';
 
-@WebSocketGateway(8000, {
-  cors: {
-    origin: '*',
-  },
+@WebSocketGateway({
+  namespace: 'chats',
 })
 export class ChatsGateway
   extends BaseService
@@ -58,7 +56,9 @@ export class ChatsGateway
 
   async handleConnection(client: Socket) {
     try {
+      this.logger.debug(`Client attempting to connect: ${client.id}`);
       const { user, expired } = await this.getUserData(client);
+      this.logger.debug(`User authenticated: ${user.id}`);
 
       await this.redisService.set({
         key: `CHAT:${user.id}`,
@@ -76,8 +76,8 @@ export class ChatsGateway
         );
       }
     } catch (error) {
+      this.logger.error(`Connection failed: ${error.message}`);
       client.disconnect();
-      this.handleError(error, 'Connect failed');
     }
   }
 

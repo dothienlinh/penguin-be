@@ -36,6 +36,19 @@ export class UsersController {
     return await this.usersService.findAll();
   }
 
+  @Get('top')
+  async getTopUsers(@CurrentUser() user: User) {
+    return this.usersService.getTopUsers(user);
+  }
+
+  @Get(':id/posts')
+  async getPostsByUserId(
+    @Param('id') id: number,
+    @Query() query: QueryListDto,
+  ) {
+    return this.usersService.getPostsByUserId(id, query);
+  }
+
   @Get('search')
   async searchUser(@Query() query: SearchUserDto) {
     return this.usersService.searchUser(query);
@@ -95,13 +108,13 @@ export class UsersController {
   @Patch('activate')
   @ApiOperation({ summary: 'Activate user' })
   async activate(@CurrentUser() user: User) {
-    return await this.usersService.updateActivateUser(true, user);
+    return await this.usersService.updateActiveStatus(user.id, true);
   }
 
   @Patch('deactivate')
   @ApiOperation({ summary: 'Deactivate user' })
   async deactivate(@CurrentUser() user: User) {
-    return await this.usersService.updateActivateUser(false, user);
+    return await this.usersService.updateActiveStatus(user.id, false);
   }
 
   @Permissions(Permission.DELETE_USER)

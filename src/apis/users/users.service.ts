@@ -24,6 +24,7 @@ import { SearchUserDto } from './dto/search-user.dto';
 import { responsePagination } from '@libs/utils/response-pagination.util';
 import { SignupDto } from './dto/signup.dto';
 import { BaseService } from '@libs/base/base.service';
+import { Post } from '@apis/posts/entities/post.entity';
 
 interface FindOneByFields {
   key: keyof User;
@@ -52,7 +53,6 @@ export class UsersService extends BaseService {
     'user.email',
     'user.gender',
     'user.isActive',
-    'user.isPublished',
     'user.updatedAt',
     'user.username',
   ];
@@ -78,14 +78,10 @@ export class UsersService extends BaseService {
       .createQueryBuilder('user')
       .distinct(true)
       .loadRelationCountAndMap('user.postCount', 'user.posts', 'posts', (qb) =>
-        qb.where(
-          'posts.isDraft = :isDraft AND posts.status = :status AND posts.isPublished = :isPublished',
-          {
-            isDraft: false,
-            status: PostStatus.APPROVED,
-            isPublished: true,
-          },
-        ),
+        qb
+          .where('posts.is_draft = :isDraft', { isDraft: false })
+          .andWhere('posts.status = :status', { status: PostStatus.APPROVED })
+          .andWhere('posts.isPublished = :isPublished', { isPublished: true }),
       )
       .loadRelationCountAndMap('user.followerCount', 'user.followers')
       .loadRelationCountAndMap('user.followingCount', 'user.following');
@@ -164,13 +160,18 @@ export class UsersService extends BaseService {
 
   async findOneByUsername(username: string, currentUser: User) {
     try {
-      const user = await this.createBuilderGetProfileUser()
+      const queryBuilder = this.createBuilderGetProfileUser()
+        .select([
+          ...this.selectUserProfile,
+          'followers.id',
+          'role.id',
+          'role.name',
+        ])
         .leftJoinAndSelect('user.followers', 'followers')
-        .select([...this.selectUserProfile, 'followers.id'])
         .where('user.username = :username', { username })
-        .leftJoin('user.role', 'role')
-        .addSelect(['role.id', 'role.name'])
-        .getOne();
+        .leftJoin('user.role', 'role');
+
+      const user = await queryBuilder.getOne();
 
       if (!user) throw new NotFoundException('User not found');
 
@@ -503,11 +504,11 @@ export class UsersService extends BaseService {
     }
   }
 
-  async updateActivateUser(isActive: boolean, user: User) {
+  async updateActiveStatus(userId: number, isActive: boolean) {
     try {
-      return await this.usersRepository.update(user.id, { isActive });
+      await this.usersRepository.update(userId, { isActive });
     } catch (error) {
-      this.handleError(error, 'Update activate user failed');
+      this.handleError(error, 'Update active status failed');
     }
   }
 
@@ -562,6 +563,63 @@ export class UsersService extends BaseService {
     }
   }
 
+  async getTopUsers(user: User) {
+    try {
+      const topUsers = await this.usersRepository
+        .createQueryBuilder('user')
+        .leftJoin('user.followers', 'followers')
+        .leftJoin('user.role', 'role')
+        .andWhere('role.name = :role', { role: Roles.USER })
+        .andWhere('user.id != :userId', { userId: user.id })
+        .groupBy('user.id')
+        .orderBy('COUNT(followers.id)', 'DESC')
+        .loadRelationCountAndMap('user.followerCount', 'user.followers')
+        .limit(10)
+        .getMany();
+
+      return plainToInstance(User, topUsers);
+    } catch (error) {
+      this.handleError(error, 'Get top users failed');
+    }
+  }
+
+  async getPostsByUserId(id: number, query: QueryListDto) {
+    try {
+      const { page, size, orderBy } = query;
+      const user = await this.usersRepository.findOneBy({ id });
+      if (!user) throw new NotFoundException('User not found');
+
+      return await this.usersRepository.manager.transaction(
+        async (transaction) => {
+          const posts = transaction
+            .createQueryBuilder(Post, 'post')
+            .leftJoin('post.user', 'user')
+            .addSelect(['user.id', 'user.username', 'user.avatar'])
+            .leftJoin('post.thumbnail', 'thumbnail')
+            .addSelect(['thumbnail.id', 'thumbnail.url'])
+            .where('user.id = :userId', { userId: id })
+            .andWhere('post.isDraft = :isDraft', { isDraft: false })
+            .andWhere('post.status = :status', { status: PostStatus.APPROVED })
+            .andWhere('post.isPublished = :isPublished', { isPublished: true })
+            .loadRelationCountAndMap(
+              'post.commentCount',
+              'post.comments',
+              'comments',
+              (qb) => qb.where('comments.parent_comment_id IS NULL'),
+            )
+            .loadRelationCountAndMap('post.likeCount', 'post.likes')
+            .orderBy('post.createdAt', orderBy)
+            .limit(size)
+            .offset((page - 1) * size);
+
+          return this.getPaginated(posts, page, size, Post);
+        },
+      );
+    } catch (error) {
+      this.handleError(error, 'Get posts by user id failed');
+    }
+  }
+
   @Cron(CronExpression.EVERY_DAY_AT_MIDNIGHT, {
     timeZone: 'Asia/Ho_Chi_Minh',
   })
@@ -583,6 +641,21 @@ export class UsersService extends BaseService {
       }
     } catch (error) {
       this.logger.error('Failed to delete expired posts:', error);
+    }
+  }
+
+  async getUserActiveStatus(userIds: number[]) {
+    try {
+      const users = await this.usersRepository.find({
+        where: { id: In(userIds) },
+        select: ['id', 'isActive'],
+      });
+      return users.reduce((acc, user) => {
+        acc[user.id] = user.isActive;
+        return acc;
+      }, {});
+    } catch (error) {
+      this.handleError(error, 'Get user active status failed');
     }
   }
 }

@@ -38,7 +38,6 @@ export class UsersService extends BaseService {
     'user.email',
     'user.gender',
     'user.isActive',
-    'user.isPublished',
     'user.updatedAt',
     'user.username',
   ];
@@ -229,6 +228,17 @@ export class UsersService extends BaseService {
         where: { id, deletedAt: Not(IsNull()) },
         relations: {
           role: true,
+          posts: true,
+          comments: true,
+          likes: true,
+          saves: true,
+          followers: true,
+          following: true,
+          receivedMessages: true,
+          sentMessages: true,
+          deletedPosts: true,
+          permissions: true,
+          chatRooms: true,
         },
         withDeleted: true,
       });
@@ -249,7 +259,7 @@ export class UsersService extends BaseService {
       }
 
       await Promise.all([
-        this.entityManager.restore(User, { id: userToRestore.id }),
+        this.entityManager.recover(User, userToRestore),
         this.entityManager.update(
           User,
           { id: userToRestore.id },
