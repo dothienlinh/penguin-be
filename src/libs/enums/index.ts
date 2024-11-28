@@ -21,6 +21,7 @@ export enum RedisKey {
   FORGOT_PASSWORD = 'FORGOT_PASSWORD',
   RESET_PASSWORD = 'RESET_PASSWORD',
   OTP_REGISTER = 'OTP_REGISTER',
+  USER_SOCKET = 'USER_SOCKET',
 }
 
 export enum PostStatus {
@@ -101,4 +102,16 @@ export enum UserStatusQuery {
 export enum ByRole {
   ADMIN = 'admin',
   USER = 'user',
+}
+
+export enum NotificationType {
+  POST = 'post',
+  COMMENT = 'comment',
+  LIKE = 'like',
+  FOLLOW = 'follow',
+  MESSAGE = 'message',
+  SYSTEM = 'system',
+  REPORT = 'report',
+  REPLY_COMMENT = 'reply_comment',
+  REPLY_MESSAGE = 'reply_message',
 }

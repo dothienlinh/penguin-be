@@ -2,16 +2,19 @@ import { CategoriesService } from '@apis/categories/categories.service';
 import { ImagesService } from '@apis/images/images.service';
 import { User } from '@apis/users/entities/user.entity';
 import { QueryListDto } from '@libs/base/base.dto';
+import { BaseService } from '@libs/base/base.service';
 import { LikeType, OrderBy, PostStatus, Roles } from '@libs/enums';
 import { AccessControl } from '@libs/utils/access-control.util';
+import { responsePagination } from '@libs/utils/response-pagination.util';
 import {
   BadRequestException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
-import { Repository, LessThan } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 import { CreatePostDto } from './dto/create-post.dto';
 import { GetPostDto } from './dto/get-post.dto';
 import { ListPostDeleteDto, ListPostDto } from './dto/list-post.dto';
@@ -19,9 +22,6 @@ import { SearchPostDto } from './dto/search-post.dto';
 import { UpdatePostDto } from './dto/update-post.dto';
 import { UploadImagePostDto } from './dto/upload-image-post.dto';
 import { Post } from './entities/post.entity';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { responsePagination } from '@libs/utils/response-pagination.util';
-import { BaseService } from '@libs/base/base.service';
 
 @Injectable()
 export class PostsService extends BaseService {
@@ -277,10 +277,6 @@ export class PostsService extends BaseService {
   async getDetailPost(id: number, query: GetPostDto, user: User) {
     try {
       const { isDraft, isPublished, status } = query;
-
-      console.log('type of isDraft', typeof isDraft);
-      console.log('type of isPublished', typeof isPublished);
-      console.log('type of status', typeof status);
 
       const checkAccess =
         isDraft === true ||

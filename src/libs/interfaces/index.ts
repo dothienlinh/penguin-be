@@ -18,3 +18,13 @@ export interface IUser {
   createdAt: Date;
   updatedAt: Date;
 }
+
+export interface ResultDataList<T> {
+  result: T[];
+  meta: {
+    totalPage: number;
+    currentPage: number;
+    pageSize: number;
+    totalRecords: number;
+  };
+}

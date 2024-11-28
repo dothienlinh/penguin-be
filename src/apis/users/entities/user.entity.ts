@@ -2,6 +2,7 @@ import { ChatRoom } from '@apis/chats/entities/chat-room.entity';
 import { Message } from '@apis/chats/entities/message.entity';
 import { Comment } from '@apis/comments/entities/comment.entity';
 import { Like } from '@apis/likes/entities/like.entity';
+import { Notification } from '@apis/notifications/entities/notification.entity';
 import { Permission } from '@apis/permissions/entities/permission.entity';
 import { Post } from '@apis/posts/entities/post.entity';
 import { Role } from '@apis/roles/entities/role.entity';
@@ -114,6 +115,9 @@ export class User extends BaseEntity {
 
   @OneToMany(() => Message, (message) => message.receiver)
   receivedMessages: Message[];
+
+  @OneToMany(() => Notification, (notification) => notification.user)
+  notifications: Notification[];
 
   @ManyToOne(() => Role, (role) => role.users)
   @JoinColumn({ name: 'role_id' })
