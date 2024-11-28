@@ -4,14 +4,14 @@
     {
       "type": "node",
       "request": "launch",
-      "name": "Nest Debug",
+      "name": "Debug NestJS",
       "runtimeExecutable": "pnpm",
-      "runtimeArgs": ["run", "start:debug", "--", "--inspect-brk"],
+      "runtimeArgs": ["run", "start:debug"],
       "console": "integratedTerminal",
       "restart": true,
-      "protocol": "auto",
-      "port": 4001,
-      "autoAttachChildProcesses": true
+      "port": 9229,
+      "autoAttachChildProcesses": true,
+      "skipFiles": ["<node_internals>/**"]
     }
   ]
 }

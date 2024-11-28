@@ -22,11 +22,11 @@ export class TimeDto {
 export class PaginationDto extends TimeDto {
   @ApiPropertyOptional({
     description: 'desc or asc',
-    example: 'desc',
+    example: OrderBy.DESC,
   })
   @IsIn([OrderBy.DESC, OrderBy.ASC])
   @IsOptional()
-  orderBy: OrderBy = OrderBy.DESC;
+  orderBy?: OrderBy = OrderBy.DESC;
 
   @ApiPropertyOptional({ example: 1 })
   @Transform(({ value }) => Number(value))

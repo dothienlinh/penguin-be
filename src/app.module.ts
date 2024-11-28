@@ -7,6 +7,7 @@ import { DatabasesModule } from '@apis/databases/databases.module';
 import { ImagesModule } from '@apis/images/images.module';
 import { LikesModule } from '@apis/likes/likes.module';
 import { MailModule } from '@apis/mail/mail.module';
+import { NotificationsModule } from '@apis/notifications/notifications.module';
 import { PermissionsModule } from '@apis/permissions/permissions.module';
 import { PostsModule } from '@apis/posts/posts.module';
 import { RolesModule } from '@apis/roles/roles.module';
@@ -16,14 +17,14 @@ import { UsersModule } from '@apis/users/users.module';
 import { dataSourceOptions } from '@database/data-source';
 import { JwtAuthGuard } from '@libs/guards/jwt-auth.guard';
 import { PermissionGuard } from '@libs/guards/permission.guard';
+import { RolesGuard } from '@libs/guards/roles.guard';
 import { TransformInterceptor } from '@libs/interceptors/response.interceptor';
 import { interpolateEnvVariables } from '@libs/utils/env.utils';
 import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
 import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
-import { TypeOrmModule } from '@nestjs/typeorm';
 import { ScheduleModule } from '@nestjs/schedule';
-import { RolesGuard } from '@libs/guards/roles.guard';
+import { TypeOrmModule } from '@nestjs/typeorm';
 
 @Module({
   imports: [
@@ -53,6 +54,7 @@ import { RolesGuard } from '@libs/guards/roles.guard';
     AdminModule,
     SavesModule,
     ScheduleModule.forRoot(),
+    NotificationsModule,
   ],
   providers: [
     {

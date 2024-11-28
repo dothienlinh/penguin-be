@@ -1,23 +1,24 @@
+import { User } from '@apis/users/entities/user.entity';
 import { UsersService } from '@apis/users/users.service';
+import { BaseService } from '@libs/base/base.service';
 import { RedisService } from '@libs/configs/redis/redis.service';
-import { Payload } from '@libs/interfaces';
+import { WebSocketAuthMiddleware } from '@libs/middlewares/websocket-auth.middleware';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import {
-  WebSocketGateway,
-  SubscribeMessage,
-  MessageBody,
-  WebSocketServer,
   ConnectedSocket,
-  OnGatewayInit,
+  MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
+  SubscribeMessage,
+  WebSocketGateway,
+  WebSocketServer,
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { CreateMessageDto } from '../dto/create-message.dto';
-import { OfflineMessagesService } from '../services/offlineMessages.service';
 import { MessagesService } from '../services/messages.service';
-import { BaseService } from '@libs/base/base.service';
+import { OfflineMessagesService } from '../services/offlineMessages.service';
 
 @WebSocketGateway({
   namespace: 'chats',
@@ -31,16 +32,23 @@ export class ChatsGateway
   constructor(
     private readonly messagesService: MessagesService,
     private readonly usersService: UsersService,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
     private readonly redisService: RedisService,
     private readonly offlineMessagesService: OfflineMessagesService,
+    private readonly jwtService: JwtService,
+    private readonly configService: ConfigService,
   ) {
     super(ChatsGateway.name);
   }
 
   afterInit() {
-    this.logger.log('ChatsGateway initialized');
+    this.server.use(
+      WebSocketAuthMiddleware(
+        this.jwtService,
+        this.configService,
+        this.usersService,
+        this.logger,
+      ),
+    );
   }
 
   async handleDisconnect(client: Socket) {
@@ -55,15 +63,16 @@ export class ChatsGateway
   }
 
   async handleConnection(client: Socket) {
+    this.logger.debug(`New connection attempt in ChatsGateway: ${client.id}`);
     try {
       this.logger.debug(`Client attempting to connect: ${client.id}`);
-      const { user, expired } = await this.getUserData(client);
+      const { user } = await this.getUserData(client);
       this.logger.debug(`User authenticated: ${user.id}`);
 
       await this.redisService.set({
         key: `CHAT:${user.id}`,
         value: client.id,
-        expired,
+        expired: 24 * 60 * 60, // 24 hours
       });
 
       // Deliver offline messages
@@ -76,25 +85,20 @@ export class ChatsGateway
         );
       }
     } catch (error) {
-      this.logger.error(`Connection failed: ${error.message}`);
+      this.logger.error(`Connection error in ChatsGateway:`, error);
       client.disconnect();
     }
   }
 
-  async getUserData(client: Socket) {
-    const bearerToken = client.handshake.headers.authorization;
-    const token = bearerToken?.split(' ')[1];
+  getUserData(client: Socket) {
+    const user = client.data.user as User;
 
-    if (!token) {
+    if (!user) {
       client.disconnect();
     }
-    const payload: Payload = await this.jwtService.verifyAsync(token, {
-      secret: this.configService.getOrThrow<string>('ACCESS_SECRET_JWT'),
-    });
 
     return {
-      user: await this.usersService.findOneById(payload.sub),
-      expired: payload.exp * 1000 - Date.now(),
+      user,
     };
   }
 

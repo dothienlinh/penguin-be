@@ -307,7 +307,6 @@ export class UsersService extends BaseService {
   async searchUser(query: SearchUserDto) {
     try {
       const { page, size, username, orderBy, role } = query;
-      console.log(query);
       const queryBuilder = this.createBaseUserFollowQuery(page, size, orderBy)
         .loadRelationCountAndMap(
           'user.postCount',

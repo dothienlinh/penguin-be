@@ -6,7 +6,7 @@ import { ValidationPipe } from '@nestjs/common';
 import cookieParser from 'cookie-parser';
 import { join } from 'path';
 import { NestExpressApplication } from '@nestjs/platform-express';
-import { SocketIoAdapter } from '@libs/adapters/SocketIoAdapter';
+import { SocketIoAdapter } from '@libs/adapters/socketIo.adapter';
 
 async function bootstrap() {
   try {
@@ -51,11 +51,13 @@ async function bootstrap() {
       credentials: true,
     });
 
-    app.useWebSocketAdapter(new SocketIoAdapter(app));
+    const socketIoAdapter = new SocketIoAdapter(app);
+    app.useWebSocketAdapter(socketIoAdapter);
 
     await app.listen(port);
+    console.log(`Application is running on port ${port}`);
   } catch (error) {
-    console.error('Unable to start application:', error);
+    console.error('Bootstrap error:', error);
     process.exit(1);
   }
 }
