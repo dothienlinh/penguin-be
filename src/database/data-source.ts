@@ -14,7 +14,7 @@ export const dataSourceOptions: DataSourceOptions = {
   migrations: ['dist/database/migrations/*.js'],
   migrationsRun: true,
   synchronize: process.env.NODE_ENV === 'development',
-  logging: true,
+  logging: process.env.NODE_ENV === 'development',
 };
 
 if (!process.env.DB_HOST) {

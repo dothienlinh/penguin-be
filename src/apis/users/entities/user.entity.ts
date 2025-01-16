@@ -72,10 +72,6 @@ export class User extends BaseEntity {
   @Column({ type: 'varchar', length: 255, nullable: true, name: 'address' })
   address: string;
 
-  @Column({ type: 'text', nullable: true, name: 'refresh_token' })
-  @Exclude()
-  refreshToken: string;
-
   @Exclude()
   @Column({ type: 'text', nullable: true, name: 'deleted_reason' })
   deletedReason: string;

@@ -1,30 +1,33 @@
 import { PermissionsService } from '@apis/permissions/permissions.service';
+import { Post } from '@apis/posts/entities/post.entity';
 import { RolesService } from '@apis/roles/roles.service';
-import { OrderBy, PostStatus, Roles } from '@libs/enums';
+import { QueryListDto } from '@libs/base/base.dto';
+import { BaseService } from '@libs/base/base.service';
+import { RedisService } from '@libs/configs/redis/redis.service';
+import { UPLOAD_FOLDER } from '@libs/constants';
+import { OrderBy, PostStatus, RedisKey, Roles } from '@libs/enums';
+import { Payload } from '@libs/interfaces';
 import { hashPassword } from '@libs/utils/password.utils';
+import { responsePagination } from '@libs/utils/response-pagination.util';
 import {
   BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { InjectRepository } from '@nestjs/typeorm';
 import { plainToInstance } from 'class-transformer';
 import { In, IsNull, LessThan, Not, Repository } from 'typeorm';
 import { CreateUserFacebookDto } from './dto/create-user-facebook.dto';
 import { CreateUserGoogleDto } from './dto/create-user-google.dto';
 import { CreateUserDto } from './dto/create-user.dto';
+import { SearchUserDto } from './dto/search-user.dto';
+import { SignupDto } from './dto/signup.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
-import { QueryListDto } from '@libs/base/base.dto';
-import { UPLOAD_FOLDER } from '@libs/constants';
-import { Cron, CronExpression } from '@nestjs/schedule';
-import { SearchUserDto } from './dto/search-user.dto';
-import { responsePagination } from '@libs/utils/response-pagination.util';
-import { SignupDto } from './dto/signup.dto';
-import { BaseService } from '@libs/base/base.service';
-import { Post } from '@apis/posts/entities/post.entity';
 
 interface FindOneByFields {
   key: keyof User;
@@ -39,6 +42,7 @@ export class UsersService extends BaseService {
     private readonly rolesService: RolesService,
     private readonly configService: ConfigService,
     private readonly permissionsService: PermissionsService,
+    private readonly redisService: RedisService,
   ) {
     super(UsersService.name);
   }
@@ -187,22 +191,6 @@ export class UsersService extends BaseService {
     }
   }
 
-  async updateRefreshToken(id: number, refreshToken: string | null) {
-    try {
-      const isExistUser = await this.isExistUser('id', +id);
-
-      if (!isExistUser) {
-        throw new NotFoundException('User not found');
-      }
-
-      await this.usersRepository.update(id, {
-        refreshToken,
-      });
-    } catch (error) {
-      this.handleError(error, 'Update refresh token failed');
-    }
-  }
-
   async createSuperAdmin() {
     const role = await this.rolesService.findOneByName(Roles.SUPER_ADMIN);
     const isExistSuperAdmin = await this.findOneByFields([
@@ -252,13 +240,23 @@ export class UsersService extends BaseService {
     }
   }
 
-  async getProfileUser(id: number) {
+  async getProfileUser(payload: Payload) {
     try {
+      const { sub, sessionId } = payload;
+
+      const sessionIdRedis = await this.redisService.get(
+        `${RedisKey.SESSION_ID}:${sub}`,
+      );
+
+      if (sessionIdRedis !== sessionId) {
+        throw new UnauthorizedException('Invalid session');
+      }
+
       const user = await this.createBuilderGetProfileUser()
         .leftJoinAndSelect('user.role', 'role')
         .leftJoin('user.permissions', 'permissions')
         .select(['user', 'role.id', 'role.name', 'permissions.name'])
-        .where('user.id = :id', { id })
+        .where('user.id = :id', { id: sub })
         .getOne();
 
       if (!user) {

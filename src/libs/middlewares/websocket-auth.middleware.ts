@@ -31,7 +31,7 @@ export const WebSocketAuthMiddleware = (
         throw new WsException('Authorization token is invalid');
       }
 
-      const user = await userService.getProfileUser(payload.sub);
+      const user = await userService.getProfileUser(payload);
 
       if (!user) {
         throw new WsException('User does not exist');
