@@ -22,6 +22,8 @@ export enum RedisKey {
   RESET_PASSWORD = 'RESET_PASSWORD',
   OTP_REGISTER = 'OTP_REGISTER',
   USER_SOCKET = 'USER_SOCKET',
+  REFRESH_TOKEN = 'REFRESH_TOKEN',
+  SESSION_ID = 'SESSION_ID',
 }
 
 export enum PostStatus {

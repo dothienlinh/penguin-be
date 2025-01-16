@@ -1,8 +1,13 @@
+import { CreateUserFacebookDto } from '@apis/users/dto/create-user-facebook.dto';
+import { CreateUserGoogleDto } from '@apis/users/dto/create-user-google.dto';
+import { SignupDto } from '@apis/users/dto/signup.dto';
 import { User } from '@apis/users/entities/user.entity';
 import { UsersService } from '@apis/users/users.service';
+import { BaseService } from '@libs/base/base.service';
 import { RedisService } from '@libs/configs/redis/redis.service';
 import { RedisKey, Roles } from '@libs/enums';
 import { Payload } from '@libs/interfaces';
+import { generateOtpCode } from '@libs/utils/otpCode.utils';
 import { comparePassword } from '@libs/utils/password.utils';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -12,11 +17,7 @@ import { Response } from 'express';
 import ms from 'ms';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
-import { CreateUserFacebookDto } from '@apis/users/dto/create-user-facebook.dto';
-import { CreateUserGoogleDto } from '@apis/users/dto/create-user-google.dto';
-import { generateOtpCode } from '@libs/utils/otpCode.utils';
-import { SignupDto } from '@apis/users/dto/signup.dto';
-import { BaseService } from '@libs/base/base.service';
+import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class AuthService extends BaseService {
@@ -49,7 +50,8 @@ export class AuthService extends BaseService {
 
   async login(user: User, response: Response, isVerified?: boolean) {
     try {
-      const payload: Payload = { sub: user.id };
+      const sessionId = uuidv4();
+      const payload: Payload = { sub: user.id, sessionId };
 
       const [accessToken, refreshToken] = await Promise.all([
         this.jwtService.signAsync(payload),
@@ -57,7 +59,22 @@ export class AuthService extends BaseService {
         ...(isVerified ? [this.usersService.verifyUser(user.id)] : []),
       ]);
 
-      await this.usersService.updateRefreshToken(+user.id, refreshToken);
+      await Promise.all([
+        this.redisService.set({
+          key: `${RedisKey.SESSION_ID}:${user.id}`,
+          value: sessionId,
+          expired: ms(
+            this.configService.getOrThrow<string>('REFRESH_EXPIRES_IN'),
+          ),
+        }),
+        this.redisService.set({
+          key: `${RedisKey.REFRESH_TOKEN}:${user.id}`,
+          value: refreshToken,
+          expired: ms(
+            this.configService.getOrThrow<string>('REFRESH_EXPIRES_IN'),
+          ),
+        }),
+      ]);
 
       response.cookie('refreshToken', refreshToken, {
         httpOnly: true,
@@ -140,7 +157,7 @@ export class AuthService extends BaseService {
   }
 
   async logout(id: number, response: Response) {
-    await this.usersService.updateRefreshToken(id, null);
+    await this.redisService.del(`${RedisKey.REFRESH_TOKEN}:${id}`);
     response.clearCookie('refreshToken');
   }
 
@@ -150,7 +167,18 @@ export class AuthService extends BaseService {
         secret: this.configService.getOrThrow<string>('REFRESH_SECRET_JWT'),
       });
 
-      const payload: Payload = { sub: decoded.sub };
+      const payload: Payload = {
+        sub: decoded.sub,
+        sessionId: decoded.sessionId,
+      };
+
+      const sessionIdRedis = await this.redisService.get(
+        `${RedisKey.SESSION_ID}:${decoded.sub}`,
+      );
+
+      if (decoded.sessionId !== sessionIdRedis) {
+        throw new BadRequestException('Invalid session');
+      }
 
       const accessToken = await this.jwtService.signAsync(payload);
 

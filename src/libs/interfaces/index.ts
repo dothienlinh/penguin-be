@@ -6,6 +6,7 @@ export interface RedisType {
 
 export interface Payload {
   sub: number;
+  sessionId: string;
   iat?: number;
   exp?: number;
 }
