@@ -1,6 +1,7 @@
 import { ChatRoom } from '@apis/chats/entities/chat-room.entity';
 import { Message } from '@apis/chats/entities/message.entity';
 import { Comment } from '@apis/comments/entities/comment.entity';
+import { Image } from '@apis/images/entities/image.entity';
 import { Like } from '@apis/likes/entities/like.entity';
 import { Notification } from '@apis/notifications/entities/notification.entity';
 import { Permission } from '@apis/permissions/entities/permission.entity';
@@ -18,6 +19,7 @@ import {
   ManyToMany,
   ManyToOne,
   OneToMany,
+  OneToOne,
 } from 'typeorm';
 
 @Entity()
@@ -31,9 +33,6 @@ export class User extends BaseEntity {
 
   @Column({ type: 'varchar', name: 'username', unique: true })
   username: string;
-
-  @Column({ type: 'text', nullable: true })
-  avatar: string;
 
   @Column({ type: 'enum', enum: Gender, nullable: true })
   gender: Gender;
@@ -75,6 +74,10 @@ export class User extends BaseEntity {
   @Exclude()
   @Column({ type: 'text', nullable: true, name: 'deleted_reason' })
   deletedReason: string;
+
+  @OneToOne(() => Image, { nullable: true, onDelete: 'CASCADE', cascade: true })
+  @JoinColumn()
+  avatar: Image;
 
   @OneToMany(() => User, (user) => user.deletedByAdmin)
   deletedUsers: User[];

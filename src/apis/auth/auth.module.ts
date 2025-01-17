@@ -1,5 +1,4 @@
 import { UsersModule } from '@apis/users/users.module';
-import { RedisModule } from '@libs/configs/redis/redis.module';
 import { JwtStrategy } from '@libs/strategys/jwt.strategy';
 import { LocalStrategy } from '@libs/strategys/local.strategy';
 import { Module } from '@nestjs/common';
@@ -16,7 +15,6 @@ import { RolesModule } from '@apis/roles/roles.module';
   imports: [
     UsersModule,
     PassportModule,
-    RedisModule,
     RolesModule,
     JwtModule.registerAsync({
       imports: [ConfigModule],

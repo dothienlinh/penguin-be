@@ -6,12 +6,15 @@ import { In, Repository } from 'typeorm';
 import { Image } from './entities/image.entity';
 import { plainToInstance } from 'class-transformer';
 import { BaseService } from '@libs/base/base.service';
+import CreateAvatar from './dto/create-avatar.dto';
+import { CloudinaryService } from '@libs/configs/cloudinary/cloudinary.service';
 
 @Injectable()
 export class ImagesService extends BaseService {
   constructor(
     @InjectRepository(Image)
     private readonly imagesRepository: Repository<Image>,
+    private readonly cloudinaryService: CloudinaryService,
   ) {
     super(ImagesService.name);
   }
@@ -29,11 +32,19 @@ export class ImagesService extends BaseService {
     }
   }
 
-  async createImagePost(url: string, post: Post, type: ImageType) {
+  async createImagePost(
+    post: Post,
+    type: ImageType,
+    secureUrl: string,
+    assetId: string,
+    publicId: string,
+  ) {
     try {
       const image = await this.imagesRepository
         .create({
-          url,
+          url: secureUrl,
+          assetId,
+          publicId,
           post: { id: post.id },
           type,
         })
@@ -42,6 +53,30 @@ export class ImagesService extends BaseService {
       return plainToInstance(Image, image);
     } catch (error) {
       this.handleError(error, 'Create image post failed');
+    }
+  }
+
+  async createAvatar(createAvatar: CreateAvatar) {
+    try {
+      const create = this.imagesRepository.create({
+        ...createAvatar,
+        type: ImageType.AVATAR,
+      });
+      return await this.imagesRepository.save(create);
+    } catch (error) {
+      this.handleError(error, 'Create avatar failed');
+    }
+  }
+
+  async createAvatarByUrl(url: string) {
+    try {
+      const create = this.imagesRepository.create({
+        url,
+        type: ImageType.AVATAR,
+      });
+      return await this.imagesRepository.save(create);
+    } catch (error) {
+      this.handleError(error, 'Create avatar by url failed');
     }
   }
 
@@ -76,6 +111,16 @@ export class ImagesService extends BaseService {
 
   async deleteImage(ids: number[], post: Post) {
     try {
+      const images = await this.imagesRepository.find({
+        where: { id: In(ids), post: { id: post.id } },
+      });
+
+      const publicIds = images
+        .map((image) => image.publicId ?? '')
+        .filter((publicId) => publicId !== '');
+
+      await this.cloudinaryService.deleteFile(publicIds);
+
       return await this.imagesRepository.delete({
         id: In(ids),
         post: { id: post.id },

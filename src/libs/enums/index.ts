@@ -39,6 +39,7 @@ export enum UpdatePostStatus {
 }
 
 export enum ImageType {
+  AVATAR = 'avatar',
   THUMBNAIL = 'thumbnail',
   IMAGE = 'image',
 }
@@ -116,4 +117,9 @@ export enum NotificationType {
   REPORT = 'report',
   REPLY_COMMENT = 'reply_comment',
   REPLY_MESSAGE = 'reply_message',
+}
+
+export enum FolderUpload {
+  POSTS = 'posts',
+  AVATARS = 'avatars',
 }

@@ -190,7 +190,7 @@ export class CommentsService extends BaseService {
 
       return {
         ...plainToInstance(Comment, comment),
-        user: { id: user.id, avatar: user.avatar, username: user.username },
+        user: { id: user.id, username: user.username },
       };
     } catch (error) {
       this.handleError(error, 'Create comment failed');

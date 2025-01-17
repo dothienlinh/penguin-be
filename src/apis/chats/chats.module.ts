@@ -1,5 +1,4 @@
 import { UsersModule } from '@apis/users/users.module';
-import { RedisModule } from '@libs/configs/redis/redis.module';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { TypeOrmModule } from '@nestjs/typeorm';
@@ -12,6 +11,7 @@ import { ChatHistoryService } from './services/chat-history.service';
 import { ChatRoomsService } from './services/chat-rooms.service';
 import { MessagesService } from './services/messages.service';
 import { OfflineMessagesService } from './services/offlineMessages.service';
+import { RedisModule } from '../../libs/configs/redis/redis.module';
 
 @Module({
   imports: [

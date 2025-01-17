@@ -101,8 +101,11 @@ export class UsersController {
     @UploadedFile() avatar: Express.Multer.File,
     @CurrentUser() user: User,
   ) {
-    const avatarUrl = avatar ? avatar.filename : null;
-    return await this.usersService.update(updateUserDto, avatarUrl, user);
+    return await this.usersService.update(
+      updateUserDto,
+      avatar ? avatar : null,
+      user,
+    );
   }
 
   @Patch('activate')

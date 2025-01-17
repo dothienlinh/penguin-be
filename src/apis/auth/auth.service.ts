@@ -236,7 +236,7 @@ export class AuthService extends BaseService {
   private async findOrCreateUser(
     profile: CreateUserFacebookDto | CreateUserGoogleDto,
     socialPlatform: 'facebook' | 'google',
-  ): Promise<User> {
+  ) {
     const key = socialPlatform === 'facebook' ? 'facebookId' : 'googleId';
     const user = await this.usersService.findOneByFields(
       {

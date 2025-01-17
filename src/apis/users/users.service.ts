@@ -4,8 +4,13 @@ import { RolesService } from '@apis/roles/roles.service';
 import { QueryListDto } from '@libs/base/base.dto';
 import { BaseService } from '@libs/base/base.service';
 import { RedisService } from '@libs/configs/redis/redis.service';
-import { UPLOAD_FOLDER } from '@libs/constants';
-import { OrderBy, PostStatus, RedisKey, Roles } from '@libs/enums';
+import {
+  FolderUpload,
+  OrderBy,
+  PostStatus,
+  RedisKey,
+  Roles,
+} from '@libs/enums';
 import { Payload } from '@libs/interfaces';
 import { hashPassword } from '@libs/utils/password.utils';
 import { responsePagination } from '@libs/utils/response-pagination.util';
@@ -28,6 +33,9 @@ import { SearchUserDto } from './dto/search-user.dto';
 import { SignupDto } from './dto/signup.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from './entities/user.entity';
+import { CloudinaryService } from '@libs/configs/cloudinary/cloudinary.service';
+import { ImagesService } from '@apis/images/images.service';
+import { Image } from '@apis/images/entities/image.entity';
 
 interface FindOneByFields {
   key: keyof User;
@@ -43,6 +51,8 @@ export class UsersService extends BaseService {
     private readonly configService: ConfigService,
     private readonly permissionsService: PermissionsService,
     private readonly redisService: RedisService,
+    private readonly cloudinaryService: CloudinaryService,
+    private readonly imagesService: ImagesService,
   ) {
     super(UsersService.name);
   }
@@ -63,15 +73,23 @@ export class UsersService extends BaseService {
 
   private async createUserAndSave(
     userDto: CreateUserDto | CreateUserFacebookDto | CreateUserGoogleDto,
+    avatar?: Image | string,
   ) {
     const permissions =
       await this.permissionsService.getDefaultPermissionsUser();
+
+    let avatarResult: Image;
+
+    if (typeof avatar === 'string' && avatar) {
+      avatarResult = await this.imagesService.createAvatarByUrl(avatar);
+    }
 
     const user = await this.usersRepository
       .create({
         ...userDto,
         isVerified: true,
         permissions,
+        avatar: avatarResult,
       })
       .save();
     return plainToInstance(User, user);
@@ -256,6 +274,7 @@ export class UsersService extends BaseService {
         .leftJoinAndSelect('user.role', 'role')
         .leftJoin('user.permissions', 'permissions')
         .select(['user', 'role.id', 'role.name', 'permissions.name'])
+        .leftJoinAndSelect('user.avatar', 'avatar')
         .where('user.id = :id', { id: sub })
         .getOne();
 
@@ -277,7 +296,10 @@ export class UsersService extends BaseService {
       const role = await this.rolesService.findOneByName(Roles.USER);
 
       createUserFacebookDto.role = role;
-      return await this.createUserAndSave(createUserFacebookDto);
+      return await this.createUserAndSave(
+        createUserFacebookDto,
+        createUserFacebookDto.avatar,
+      );
     } catch (error) {
       this.handleError(error, 'Create user with facebook failed');
     }
@@ -287,7 +309,10 @@ export class UsersService extends BaseService {
     try {
       const role = await this.rolesService.findOneByName(Roles.USER);
       createUserGoogleDto.role = role;
-      return await this.createUserAndSave(createUserGoogleDto);
+      return await this.createUserAndSave(
+        createUserGoogleDto,
+        createUserGoogleDto.avatar,
+      );
     } catch (error) {
       this.handleError(error, 'Create user with google failed');
     }
@@ -459,7 +484,7 @@ export class UsersService extends BaseService {
 
   async update(
     updateUserDto: UpdateUserDto,
-    avatarUrl: string | null,
+    avatar: Express.Multer.File | null,
     user: User,
   ) {
     try {
@@ -476,26 +501,30 @@ export class UsersService extends BaseService {
         throw new ConflictException('Username already exists');
       }
 
-      const updateData: Partial<User> = {
-        ...rest,
-        avatar: avatarUrl,
-        username,
-      };
+      if (avatar) {
+        const uploadResult = await this.cloudinaryService.uploadFile(
+          avatar,
+          FolderUpload.AVATARS,
+        );
 
-      if (avatarUrl) {
-        const fullUrlAvatar = `${this.configService.getOrThrow<string>(
-          'BACKEND_URL',
-        )}/${UPLOAD_FOLDER}/${avatarUrl}`;
-        updateData.avatar = fullUrlAvatar;
-      } else {
-        delete updateData.avatar;
+        const avatarResult = await this.imagesService.createAvatar({
+          assetId: uploadResult.asset_id,
+          publicId: uploadResult.public_id,
+          url: uploadResult.secure_url,
+        });
+
+        return await this.usersRepository.update(user.id, {
+          ...rest,
+          username,
+          avatar: avatarResult,
+        });
       }
 
-      await this.usersRepository.update(user.id, {
-        ...updateData,
+      return await this.usersRepository.update(user.id, {
+        ...rest,
+        username,
+        avatar: undefined,
       });
-
-      return updateData;
     } catch (error) {
       this.handleError(error, 'Update user failed');
     }
