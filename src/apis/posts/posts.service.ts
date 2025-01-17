@@ -3,7 +3,14 @@ import { ImagesService } from '@apis/images/images.service';
 import { User } from '@apis/users/entities/user.entity';
 import { QueryListDto } from '@libs/base/base.dto';
 import { BaseService } from '@libs/base/base.service';
-import { LikeType, OrderBy, PostStatus, Roles } from '@libs/enums';
+import { CloudinaryService } from '@libs/configs/cloudinary/cloudinary.service';
+import {
+  FolderUpload,
+  LikeType,
+  OrderBy,
+  PostStatus,
+  Roles,
+} from '@libs/enums';
 import { AccessControl } from '@libs/utils/access-control.util';
 import { responsePagination } from '@libs/utils/response-pagination.util';
 import {
@@ -30,6 +37,7 @@ export class PostsService extends BaseService {
     private readonly postsRepository: Repository<Post>,
     private readonly imagesService: ImagesService,
     private readonly categoriesService: CategoriesService,
+    private readonly cloudinaryService: CloudinaryService,
   ) {
     super(PostsService.name);
   }
@@ -39,7 +47,7 @@ export class PostsService extends BaseService {
       where: { id: postId },
       relations: { user: true, images: true },
       select: {
-        user: { id: true, username: true, avatar: true },
+        user: { id: true, username: true },
         images: { id: true, url: true, type: true },
       },
     });
@@ -91,7 +99,7 @@ export class PostsService extends BaseService {
 
       return {
         ...plainToInstance(Post, post),
-        user: { id: user.id, username: user.username, avatar: user.avatar },
+        user: { id: user.id, username: user.username },
       };
     } catch (error) {
       this.handleError(error, 'Create post failed');
@@ -227,7 +235,7 @@ export class PostsService extends BaseService {
         where: { id },
         withDeleted: true,
         relations: { user: true },
-        select: { user: { id: true, username: true, avatar: true } },
+        select: { user: { id: true, username: true } },
       });
 
       if (!post) {
@@ -463,12 +471,17 @@ export class PostsService extends BaseService {
 
   async uploadImagePost(
     postId: number,
-    filename: string,
     body: UploadImagePostDto,
     user: User,
+    file: Express.Multer.File,
   ) {
     try {
       const post = await this.isExistPostAndCheckAccess(postId, user);
+
+      const uploadResult = await this.cloudinaryService.uploadFile(
+        file,
+        FolderUpload.POSTS,
+      );
 
       const { type, isPublished, isDraft, status } = body;
       const parameters: Record<string, boolean | string | number> = {};
@@ -491,7 +504,13 @@ export class PostsService extends BaseService {
       const [postUpdated, image] = await Promise.all([
         isPublishedPost &&
           this.postsRepository.save({ ...post, ...parameters }),
-        this.imagesService.createImagePost(filename, post, type),
+        this.imagesService.createImagePost(
+          post,
+          type,
+          uploadResult.secure_url,
+          uploadResult.asset_id,
+          uploadResult.public_id,
+        ),
       ]);
 
       return {
@@ -507,7 +526,7 @@ export class PostsService extends BaseService {
     try {
       const post = await this.isExistPostAndCheckAccess(postId, user);
 
-      return this.imagesService.deleteImage(imageIds, post);
+      return await this.imagesService.deleteImage(imageIds, post);
     } catch (error) {
       this.handleError(error, 'Delete image post failed');
     }

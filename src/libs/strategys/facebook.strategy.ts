@@ -35,6 +35,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       id,
       gender,
       username: displayName,
+      photos,
     } = profile;
 
     const username = displayName
@@ -54,6 +55,7 @@ export class FacebookStrategy extends PassportStrategy(Strategy, 'facebook') {
       gender: gender in Gender ? (gender as Gender) : Gender.OTHER,
       provider: Provider.FACEBOOK,
       role: role,
+      avatar: photos[0].value,
     });
 
     done(null, user);

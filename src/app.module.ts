@@ -12,9 +12,9 @@ import { PermissionsModule } from '@apis/permissions/permissions.module';
 import { PostsModule } from '@apis/posts/posts.module';
 import { RolesModule } from '@apis/roles/roles.module';
 import { SavesModule } from '@apis/saves/saves.module';
-import { UploadModule } from '@apis/upload/upload.module';
 import { UsersModule } from '@apis/users/users.module';
 import { dataSourceOptions } from '@database/data-source';
+import { CloudinaryModule } from '@libs/configs/cloudinary/cloudinary.module';
 import { JwtAuthGuard } from '@libs/guards/jwt-auth.guard';
 import { PermissionGuard } from '@libs/guards/permission.guard';
 import { RolesGuard } from '@libs/guards/roles.guard';
@@ -46,7 +46,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     LikesModule,
     ChatsModule,
     MailModule,
-    UploadModule,
     RolesModule,
     PermissionsModule,
     CategoriesModule,
@@ -55,6 +54,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
     SavesModule,
     ScheduleModule.forRoot(),
     NotificationsModule,
+    CloudinaryModule,
   ],
   providers: [
     {

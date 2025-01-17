@@ -11,7 +11,16 @@ export class Image extends BaseEntity {
   @Column({ type: 'varchar', length: 20, default: ImageType.THUMBNAIL })
   type: ImageType;
 
-  @ManyToOne(() => Post, (post) => post.images, { onDelete: 'CASCADE' })
+  @Column({ type: 'varchar', length: 255, name: 'asset_id', nullable: true })
+  assetId: string;
+
+  @Column({ type: 'varchar', length: 255, name: 'public_id', nullable: true })
+  publicId: string;
+
+  @ManyToOne(() => Post, (post) => post.images, {
+    onDelete: 'CASCADE',
+    nullable: true,
+  })
   @JoinColumn({ name: 'post_id' })
   post: Post;
 }

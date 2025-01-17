@@ -1,13 +1,9 @@
-import { UploadFileDto } from '@apis/upload/dto/upload-file.dto';
 import { ImageType } from '@libs/enums';
 import { ApiProperty, IntersectionType } from '@nestjs/swagger';
 import { IsEnum, IsNotEmpty } from 'class-validator';
 import { GetPostDto } from './get-post.dto';
 
-export class UploadImagePostDto extends IntersectionType(
-  UploadFileDto,
-  GetPostDto,
-) {
+export class UploadImagePostDto extends IntersectionType(GetPostDto) {
   @ApiProperty({
     enum: ImageType,
     example: ImageType.THUMBNAIL,
@@ -16,4 +12,7 @@ export class UploadImagePostDto extends IntersectionType(
   @IsNotEmpty()
   @IsEnum(ImageType)
   type: ImageType;
+
+  @ApiProperty({ type: 'array', items: { type: 'string', format: 'binary' } })
+  images: Express.Multer.File[];
 }

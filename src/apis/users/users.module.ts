@@ -1,7 +1,6 @@
 import { PermissionsModule } from '@apis/permissions/permissions.module';
 import { RolesModule } from '@apis/roles/roles.module';
 import { createMulterOptions } from '@libs/configs/multer/multer-options.factory';
-import { RedisModule } from '@libs/configs/redis/redis.module';
 import { IMAGE_TYPES } from '@libs/constants';
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
@@ -11,6 +10,7 @@ import { User } from './entities/user.entity';
 import { ActiveGateway } from './gateways/active.gateway';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
+import { ImagesModule } from '@apis/images/images.module';
 
 @Module({
   imports: [
@@ -25,7 +25,7 @@ import { UsersService } from './users.service';
     RolesModule,
     PermissionsModule,
     JwtModule,
-    RedisModule,
+    ImagesModule,
   ],
   controllers: [UsersController],
   providers: [UsersService, ActiveGateway],

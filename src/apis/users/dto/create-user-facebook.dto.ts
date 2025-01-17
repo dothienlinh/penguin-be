@@ -34,4 +34,8 @@ export class CreateUserFacebookDto {
   @Type(() => Role)
   @IsOptional()
   role: Role;
+
+  @IsOptional()
+  @IsString()
+  avatar: string;
 }

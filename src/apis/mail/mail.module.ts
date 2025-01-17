@@ -4,7 +4,6 @@ import { MailController } from './mail.controller';
 import { MailerModule } from '@nestjs-modules/mailer';
 import { ConfigService } from '@nestjs/config';
 import { HandlebarsAdapter } from '@nestjs-modules/mailer/dist/adapters/handlebars.adapter';
-import { RedisModule } from '@libs/configs/redis/redis.module';
 import { UsersModule } from '@apis/users/users.module';
 import { join } from 'path';
 import { AuthModule } from '@apis/auth/auth.module';
@@ -32,7 +31,6 @@ import { AuthModule } from '@apis/auth/auth.module';
       }),
       inject: [ConfigService],
     }),
-    RedisModule,
     UsersModule,
     AuthModule,
   ],

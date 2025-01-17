@@ -62,12 +62,7 @@ export class PostsController {
     if (!file) {
       throw new BadRequestException('File is required');
     }
-    return await this.postsService.uploadImagePost(
-      +id,
-      file.filename,
-      body,
-      user,
-    );
+    return await this.postsService.uploadImagePost(+id, body, user, file);
   }
 
   @Permissions(Permission.UPDATE_POST)
