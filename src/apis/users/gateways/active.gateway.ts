@@ -1,44 +1,27 @@
-import { BaseService } from '@libs/base/base.service';
-import { WebSocketAuthMiddleware } from '@libs/middlewares/websocket-auth.middleware';
+import { BaseGateway } from '@libs/base/base.gateway';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import {
   OnGatewayConnection,
   OnGatewayDisconnect,
-  OnGatewayInit,
   WebSocketGateway,
-  WebSocketServer,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import { Socket } from 'socket.io';
 import { UsersService } from '../users.service';
 
 @WebSocketGateway({
   namespace: 'active',
 })
 export class ActiveGateway
-  extends BaseService
-  implements OnGatewayConnection, OnGatewayDisconnect, OnGatewayInit
+  extends BaseGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
 {
-  @WebSocketServer()
-  server: Server;
-
   constructor(
-    private readonly usersService: UsersService,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
+    protected readonly usersService: UsersService,
+    protected readonly jwtService: JwtService,
+    protected readonly configService: ConfigService,
   ) {
-    super(ActiveGateway.name);
-  }
-
-  afterInit() {
-    this.server.use(
-      WebSocketAuthMiddleware(
-        this.jwtService,
-        this.configService,
-        this.usersService,
-        this.logger,
-      ),
-    );
+    super(jwtService, configService, usersService, ActiveGateway.name);
   }
 
   async handleConnection(client: Socket) {
@@ -50,9 +33,7 @@ export class ActiveGateway
       }
 
       await this.usersService.updateActiveStatus(user.id, true);
-
       this.server.emit('userActive', { userId: user.id, isActive: true });
-
       client.join(`user:${user.id}`);
     } catch (error) {
       this.logger.error(`Error in handleConnection: ${error.message}`);
@@ -66,7 +47,6 @@ export class ActiveGateway
       if (!user) return;
 
       await this.usersService.updateActiveStatus(user.id, false);
-
       this.server.emit('userInactive', { userId: user.id, isActive: false });
     } catch (error) {
       this.logger.error(`Error in handleDisconnect: ${error.message}`);

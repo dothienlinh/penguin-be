@@ -14,7 +14,7 @@ import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { plainToInstance } from 'class-transformer';
 import { Response } from 'express';
-import ms from 'ms';
+import ms, { StringValue } from 'ms';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { v4 as uuidv4 } from 'uuid';
@@ -64,21 +64,23 @@ export class AuthService extends BaseService {
           key: `${RedisKey.SESSION_ID}:${user.id}`,
           value: sessionId,
           expired: ms(
-            this.configService.getOrThrow<string>('REFRESH_EXPIRES_IN'),
+            this.configService.getOrThrow<StringValue>('REFRESH_EXPIRES_IN'),
           ),
         }),
         this.redisService.set({
           key: `${RedisKey.REFRESH_TOKEN}:${user.id}`,
           value: refreshToken,
           expired: ms(
-            this.configService.getOrThrow<string>('REFRESH_EXPIRES_IN'),
+            this.configService.getOrThrow<StringValue>('REFRESH_EXPIRES_IN'),
           ),
         }),
       ]);
 
       response.cookie('refreshToken', refreshToken, {
         httpOnly: true,
-        maxAge: ms(this.configService.getOrThrow<string>('REFRESH_SECRET_JWT')),
+        maxAge: ms(
+          this.configService.getOrThrow<StringValue>('REFRESH_EXPIRES_IN'),
+        ),
       });
 
       return { accessToken };
@@ -289,7 +291,7 @@ export class AuthService extends BaseService {
         key: `${RedisKey.OTP_REGISTER}:${email}`,
         value: otpCode.toString(),
         expired: ms(
-          this.configService.getOrThrow<string>('OTP_REGISTER_EXPIRES_IN'),
+          this.configService.getOrThrow<StringValue>('OTP_REGISTER_EXPIRES_IN'),
         ),
       });
 

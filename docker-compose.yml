@@ -1,13 +1,14 @@
 services:
   server:
     container_name: penguin_server
-    build: 
+    build:
       context: .
       dockerfile: Dockerfile
     restart: always
     env_file: .env
     ports:
-      - "${APP_PORT}:${APP_PORT}"
+      - '${APP_PORT}:${APP_PORT}'
+      - '${WS_PORT}:${WS_PORT}'
     volumes:
       - type: bind
         source: ./public/uploads
@@ -17,11 +18,11 @@ services:
     depends_on:
       - db
       - redis
-    user: "root"
+    user: 'root'
 
   db:
     container_name: penguin_db
-    image: postgres:15.8-alpine
+    image: postgres:15-alpine
     restart: always
     env_file: .env
     environment:
@@ -29,27 +30,27 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
     ports:
-      - "${DB_PORT}:5432"
-    volumes: 
+      - '${DB_PORT}:5432'
+    volumes:
       - penguin_db_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME} -d ${DB_NAME}"]
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USERNAME} -d ${DB_NAME}']
       interval: 10s
       timeout: 5s
       retries: 5
 
   redis:
     container_name: penguin_redis
-    image: redis:7.4.0-alpine
+    image: redis:7.4-alpine
     restart: unless-stopped
     env_file: .env
     ports:
-      - "${REDIS_PORT}:6379"
+      - '${REDIS_PORT}:6379'
     command: redis-server --save 20 1 --loglevel warning --requirepass ${REDIS_PASSWORD}
-    volumes: 
+    volumes:
       - penguin_redis_data:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ['CMD', 'redis-cli', 'ping']
       interval: 10s
       timeout: 5s
       retries: 5
@@ -57,3 +58,8 @@ services:
 volumes:
   penguin_db_data:
   penguin_redis_data:
+
+networks:
+  penguin_network:
+    external: true
+    name: penguin_default

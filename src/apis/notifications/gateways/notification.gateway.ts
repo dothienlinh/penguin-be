@@ -1,6 +1,5 @@
 import { UsersService } from '@apis/users/users.service';
-import { BaseService } from '@libs/base/base.service';
-import { WebSocketAuthMiddleware } from '@libs/middlewares/websocket-auth.middleware';
+import { BaseGateway } from '@libs/base/base.gateway';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import {
@@ -8,12 +7,10 @@ import {
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
-  WebSocketServer,
 } from '@nestjs/websockets';
-import { Server, Socket } from 'socket.io';
+import { Socket } from 'socket.io';
 import { CreateNotificationDto } from '../dto/create-notification.dto';
 import { NotificationsService } from '../notifications.service';
 
@@ -21,18 +18,16 @@ import { NotificationsService } from '../notifications.service';
   namespace: 'notifications',
 })
 export class NotificationGateway
-  extends BaseService
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+  extends BaseGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
 {
-  @WebSocketServer() server: Server;
-
   constructor(
-    private readonly usersService: UsersService,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
+    protected readonly usersService: UsersService,
+    protected readonly jwtService: JwtService,
+    protected readonly configService: ConfigService,
     private readonly notificationsService: NotificationsService,
   ) {
-    super(NotificationGateway.name);
+    super(jwtService, configService, usersService, NotificationGateway.name);
   }
 
   private userClient(client: Socket) {
@@ -43,17 +38,6 @@ export class NotificationGateway
     }
 
     return user;
-  }
-
-  afterInit() {
-    this.server.use(
-      WebSocketAuthMiddleware(
-        this.jwtService,
-        this.configService,
-        this.usersService,
-        this.logger,
-      ),
-    );
   }
 
   async handleConnection(client: Socket) {

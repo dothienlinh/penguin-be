@@ -1,30 +1,18 @@
-FROM node:18-alpine as build
+FROM node:20-alpine as build
 
 WORKDIR /app
 
-RUN chown node:node /app && \
-  npm i -g @nestjs/cli && \
-  npm i -g pnpm
+RUN chown node:node /app
 
-COPY --chown=node:node package.json ./
-COPY --chown=node:node pnpm-lock.yaml ./
-RUN pnpm i
+COPY package.json yarn.lock ./
+RUN yarn
 
-COPY --chown=node:node . .
-RUN pnpm build
-RUN pnpm i --only=production
-
-FROM node:18-alpine as production
-
-WORKDIR /app
-
-COPY --chown=node:node --from=build /app/node_modules /app/node_modules
-COPY --chown=node:node --from=build /app/dist /app/dist
-COPY --chown=node:node --from=build /app/package.json .
-COPY --chown=node:node --from=build /app/.env .
+COPY . .
+RUN yarn build
 
 USER node
 
 EXPOSE 4000
+EXPOSE 8080
 
-CMD ["node", "dist/main"]
+CMD ["yarn", "start:dev"]

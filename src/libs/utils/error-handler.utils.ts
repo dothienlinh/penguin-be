@@ -6,6 +6,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
+import { JsonWebTokenError } from '@nestjs/jwt';
 import { QueryFailedError } from 'typeorm';
 
 export class ErrorHandler {
@@ -32,6 +33,10 @@ export class ErrorHandler {
 
     if (error instanceof QueryFailedError) {
       throw new InternalServerErrorException('Database operation failed');
+    }
+
+    if (error instanceof JsonWebTokenError) {
+      throw new UnauthorizedException('Invalid token');
     }
 
     console.error(`${message || 'Unhandled error'}:`, error);

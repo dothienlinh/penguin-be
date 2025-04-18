@@ -16,7 +16,7 @@ export class SocketIoAdapter extends IoAdapter {
     port = this.configService.get<number>('WS_PORT');
 
     const cors = {
-      origin: [clientUrl],
+      origin: ['*', clientUrl],
       credentials: true,
       methods: ['GET', 'POST'],
       allowedHeaders: ['Authorization', 'Content-Type'],

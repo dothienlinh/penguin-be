@@ -5,7 +5,7 @@
       "type": "node",
       "request": "launch",
       "name": "Debug NestJS",
-      "runtimeExecutable": "pnpm",
+      "runtimeExecutable": "yarn",
       "runtimeArgs": ["run", "start:debug"],
       "console": "integratedTerminal",
       "restart": true,
