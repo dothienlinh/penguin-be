@@ -7,7 +7,7 @@ import { generateOtpCode } from '@libs/utils/otpCode.utils';
 import { MailerService } from '@nestjs-modules/mailer';
 import { BadRequestException, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import ms from 'ms';
+import ms, { StringValue } from 'ms';
 import { SendForgotPasswordDto } from './dto/send-forgot-password.dto';
 import { SendRegisterDto } from './dto/send-register-dto';
 import { VerifyOtpCodeDto } from './dto/verify-otp-code.dto';
@@ -39,7 +39,7 @@ export class MailService extends BaseService {
           key: `${key}:${email}`,
           value: otpCode.toString(),
           expired: ms(
-            this.configService.getOrThrow<string>(
+            this.configService.getOrThrow<StringValue>(
               'OTP_RESET_PASSWORD_EXPIRES_IN',
             ),
           ),
@@ -101,7 +101,7 @@ export class MailService extends BaseService {
             key: `${RedisKey.FORGOT_PASSWORD}:${email}`,
             value: otpCode,
             expired: ms(
-              this.configService.getOrThrow<string>(
+              this.configService.getOrThrow<StringValue>(
                 'OTP_FORGOT_PASSWORD_EXPIRES_IN',
               ),
             ),

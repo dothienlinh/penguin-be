@@ -1,8 +1,6 @@
 import { User } from '@apis/users/entities/user.entity';
 import { UsersService } from '@apis/users/users.service';
-import { BaseService } from '@libs/base/base.service';
 import { RedisService } from '@libs/configs/redis/redis.service';
-import { WebSocketAuthMiddleware } from '@libs/middlewares/websocket-auth.middleware';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import {
@@ -10,7 +8,6 @@ import {
   MessageBody,
   OnGatewayConnection,
   OnGatewayDisconnect,
-  OnGatewayInit,
   SubscribeMessage,
   WebSocketGateway,
   WebSocketServer,
@@ -19,36 +16,26 @@ import { Server, Socket } from 'socket.io';
 import { CreateMessageDto } from '../dto/create-message.dto';
 import { MessagesService } from '../services/messages.service';
 import { OfflineMessagesService } from '../services/offlineMessages.service';
+import { BaseGateway } from '@libs/base/base.gateway';
 
 @WebSocketGateway({
   namespace: 'chats',
 })
 export class ChatsGateway
-  extends BaseService
-  implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect
+  extends BaseGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
 {
   @WebSocketServer() server: Server;
 
   constructor(
     private readonly messagesService: MessagesService,
-    private readonly usersService: UsersService,
+    protected readonly usersService: UsersService,
     private readonly redisService: RedisService,
     private readonly offlineMessagesService: OfflineMessagesService,
-    private readonly jwtService: JwtService,
-    private readonly configService: ConfigService,
+    protected readonly jwtService: JwtService,
+    protected readonly configService: ConfigService,
   ) {
-    super(ChatsGateway.name);
-  }
-
-  afterInit() {
-    this.server.use(
-      WebSocketAuthMiddleware(
-        this.jwtService,
-        this.configService,
-        this.usersService,
-        this.logger,
-      ),
-    );
+    super(jwtService, configService, usersService, ChatsGateway.name);
   }
 
   async handleDisconnect(client: Socket) {
@@ -90,7 +77,7 @@ export class ChatsGateway
     }
   }
 
-  getUserData(client: Socket) {
+  async getUserData(client: Socket) {
     const user = client.data.user as User;
 
     if (!user) {

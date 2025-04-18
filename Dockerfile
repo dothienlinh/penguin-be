@@ -2,17 +2,14 @@ FROM node:18-alpine as build
 
 WORKDIR /app
 
-RUN chown node:node /app && \
-  npm i -g @nestjs/cli && \
-  npm i -g pnpm
+RUN chown node:node /app
 
 COPY --chown=node:node package.json ./
-COPY --chown=node:node pnpm-lock.yaml ./
-RUN pnpm i
+RUN yarn 
 
 COPY --chown=node:node . .
-RUN pnpm build
-RUN pnpm i --only=production
+RUN yarn
+RUN yarn install --production
 
 FROM node:18-alpine as production
 

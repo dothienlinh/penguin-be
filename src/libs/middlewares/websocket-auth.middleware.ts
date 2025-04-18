@@ -1,9 +1,8 @@
 import { UsersService } from '@apis/users/users.service';
 import { Payload } from '@libs/interfaces';
-import { Logger } from '@nestjs/common';
+import { Logger, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 
 export const WebSocketAuthMiddleware = (
@@ -17,7 +16,7 @@ export const WebSocketAuthMiddleware = (
       const token = socket.handshake?.auth?.token;
 
       if (!token) {
-        throw new WsException('Authorization token is missing');
+        throw new UnauthorizedException('Authorization token is missing');
       }
 
       let payload: Payload | null = null;
@@ -28,20 +27,20 @@ export const WebSocketAuthMiddleware = (
         });
       } catch (error) {
         logger.error(error);
-        throw new WsException('Authorization token is invalid');
+        throw new UnauthorizedException('Authorization token is invalid');
       }
 
       const user = await userService.getProfileUser(payload);
 
       if (!user) {
-        throw new WsException('User does not exist');
+        throw new UnauthorizedException('User does not exist');
       }
 
       socket.data.user = user;
       next();
     } catch (error) {
       logger.error(error);
-      next(new Error('Unauthorized'));
+      next(new UnauthorizedException('Unauthorized'));
     }
   };
 };
